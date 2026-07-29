@@ -137,3 +137,20 @@ part of the very fabric of the universe: alien thoughts, alien machine
 **Verbatim:**
 
 so we need to fix the sun animation - we have not given the user the ability to select / create what they are yet - add that to the spec but lets focus on the default - the default user is a HUMAN - we are human and that means something - life - HUMAN life (put this in the hud, and what you are is always in capital letters like HUMAN), and is represented in the navigation display as a stick figure - ascii art arms and legs - we need to define how big this HUMAN is - sometimes the HUMAN travels through the sun in SHIPS but sometimes they have the tech with them to do a SOLAR BASE JUMP - you need to remember these actions in the spec, and echo them telling the user what is happening during the jump - so now to the actual SOLAR BASE JUMP - the default as every HUMAN can jump through a star to another star via use of GRAVATIONAL WELL entrances as they exist everywhere in strange places in the universe - there just happens to be ones that take you to the next STAR as we slingshot our selves through our local star to the NEXT - this is the animation:  the HUMAN zooms up to the ascii circle that represents the sphere aka star - we rotate the star - it rotates itself through some type of ascii animation and then the center of the STAR opens as the HUMAN zooms closer and closer to it - eventually we get taken in by a DARK SPOT (black dark blocks) - we are still in the animation - now we are travelling and there is more animation - during the travel that is 5-10 seconds depending on the distance we are traveling - random words emerge from the universe - this is QUANTUM data emerging from the universe as the HUMAN mind bends and becomes part of the UNIVERSE anything and everything can give it input - it becomes part of the very fabric of the universe - alien thoughts, alien machine (computer) messages - whatever can all pop up randomly as we travel
+
+### 2026-07-29 — LLM player type and the console
+
+**Edited for readability:**
+
+We need an LLM type player. To be converted to an LLM — or to be an
+LLM — you have to solve an LLM puzzle.
+
+Get it added, plan it, and get ready to auto execute it. Make a mode to
+switch, using some type of console that comes in from the top, like
+Half-Life. Take your time — make it nice.
+
+**Verbatim:**
+
+we need a LLM type player and to be converted to a LLM - or be a LLM you have to solve a LLM puzzle
+
+get it added, plan it, and get ready to auto execute it - make a mode to switch using some type of console that comes in from the top like half life - take your time - make it nice

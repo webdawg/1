@@ -123,6 +123,18 @@ architecture doesn't foreclose them, but not actionable yet.
       "none required at this time" in the original vision, lowest priority
 - [ ] Second video-raster "game box" overlay on top of text mode
 - [ ] Feed engine state to an external 3D game engine as a renderer
+- [ ] **The navigation model as a general visual protocol** — the
+      recursive "center + orbiting things" pattern (`worldTree.ts`'s
+      `getOrbitChildren`) isn't inherently astronomy-specific; it could
+      be a general way for bots/agents to navigate *any* data (files,
+      APIs, the wider internet, ...) through the same center-and-orbit
+      interaction model already built here, not just this solar-system
+      dataset. Pairs with recording/logging what a bot did while
+      navigating — an activity trail, distinct from a HUMAN's own
+      session log. Undefined beyond the idea itself; revisit once
+      Phase 2's "bots/NPCs at locations" item (bots *in* the universe)
+      and Phase 3's multi-user work (observability across sessions) give
+      it more shape.
 
 **Done when:** honestly, this phase is a horizon, not a target — revisit
 and re-scope once Phases 1-5 make the shape of the platform clearer.
