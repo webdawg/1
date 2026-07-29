@@ -11,8 +11,9 @@
  */
 import { daysSinceJ2000, getPlanetPositions, PLANET_ORDER, type PlanetName } from "./orbital.js";
 import { getMoonsOf, isMoonId, MOON_FACTS, type MoonId } from "./moonFacts.js";
+import { hasRings } from "./ringFacts.js";
 
-export type LeafKind = "surface" | "orbit-log" | "notes";
+export type LeafKind = "surface" | "orbit-log" | "rings" | "notes";
 export type NodeKind = "sun" | "planet" | "moon" | LeafKind;
 
 export interface OrbitEntry {
@@ -48,11 +49,13 @@ const PLANET_META: Record<PlanetName, { label: string; glyph: string }> = {
 const SUN_AU_DOMAIN: DistanceDomain = { min: 0.38, max: 30.1 };
 const LEAF_DOMAIN: DistanceDomain = { min: 1, max: 3 };
 
-// Every planet/moon has the same three leaves; ContentView renders real data
-// for each, keyed by this suffix.
+// Every planet/moon has these leaves; ContentView renders real data for each,
+// keyed by this suffix. "rings" is filtered out per-owner in leafChildren
+// below, since only some planets have a ring system.
 const LEAVES: Array<{ suffix: LeafKind; label: string }> = [
   { suffix: "surface", label: "Surface" },
   { suffix: "orbit-log", label: "Orbit Log" },
+  { suffix: "rings", label: "Rings" },
   { suffix: "notes", label: "Notes" },
 ];
 
@@ -124,16 +127,21 @@ export function getBreadcrumbLabel(nodeId: string): string {
 
 export function getDistanceDomain(nodeId: string): DistanceDomain {
   if (nodeId === "sun") return SUN_AU_DOMAIN;
-  if (isKnownPlanet(nodeId)) return { min: 1, max: 3 + getMoonsOf(nodeId).length };
+  if (isKnownPlanet(nodeId)) {
+    return { min: 1, max: leafChildren(nodeId).length + getMoonsOf(nodeId).length };
+  }
   return LEAF_DOMAIN;
 }
 
 function leafChildren(ownerId: string): OrbitEntry[] {
-  return LEAVES.map((leaf, index) => ({
+  const applicable = LEAVES.filter(
+    (leaf) => leaf.suffix !== "rings" || (isKnownPlanet(ownerId) && hasRings(ownerId))
+  );
+  return applicable.map((leaf, index) => ({
     id: `${ownerId}:${leaf.suffix}`,
     label: leaf.label,
     glyph: "·",
-    angleDeg: (360 / LEAVES.length) * index,
+    angleDeg: (360 / applicable.length) * index,
     distance: index + 1,
   }));
 }
@@ -150,6 +158,7 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
   }
 
   if (isKnownPlanet(nodeId)) {
+    const leaves = leafChildren(nodeId);
     const moonEntries: OrbitEntry[] = getMoonsOf(nodeId).map((moonId, index) => {
       const facts = MOON_FACTS[moonId];
       return {
@@ -157,10 +166,10 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
         label: facts.label,
         glyph: "o",
         angleDeg: moonAngle(moonId, date, facts.orbitalPeriodDays),
-        distance: 4 + index,
+        distance: leaves.length + 1 + index,
       };
     });
-    return [...leafChildren(nodeId), ...moonEntries];
+    return [...leaves, ...moonEntries];
   }
 
   if (isMoonId(nodeId)) return leafChildren(nodeId);

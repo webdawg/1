@@ -49,7 +49,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   const centerId = path[path.length - 1];
   const centerLabel = getCenterLabel(centerId);
   const centerKind = getNodeKind(centerId);
-  const isLeaf = centerKind === "surface" || centerKind === "orbit-log" || centerKind === "notes";
+  const isLeaf = centerKind === "surface" || centerKind === "orbit-log" || centerKind === "rings" || centerKind === "notes";
   const domain = useMemo(() => getDistanceDomain(centerId), [centerId]);
   const children = useMemo(
     () => [...getOrbitChildren(centerId, new Date())].sort((a, b) => a.angleDeg - b.angleDeg),

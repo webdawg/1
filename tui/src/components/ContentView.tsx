@@ -3,6 +3,7 @@ import { Box, Text } from "ink";
 import { getPlanetPosition, type PlanetName } from "../orbital.js";
 import { PLANET_FACTS } from "../planetFacts.js";
 import { getMoonsOf, isMoonId, MOON_FACTS, type MoonId } from "../moonFacts.js";
+import { RING_FACTS } from "../ringFacts.js";
 import { getMoonPosition, isKnownPlanet, parseLeafId } from "../worldTree.js";
 
 interface Props {
@@ -55,6 +56,23 @@ function PlanetOrbitLog({ planet, date }: { planet: PlanetName; date: Date }): R
   );
 }
 
+function PlanetRings({ planet }: { planet: PlanetName }): React.JSX.Element {
+  const rings = RING_FACTS[planet];
+  if (!rings) return <Text dimColor>No rings here.</Text>;
+  return (
+    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+      <Text italic>{rings.description}</Text>
+      <Text> </Text>
+      <Text>Composition: {rings.composition}</Text>
+      <Text>
+        Span: {rings.innerRadiusKm.toLocaleString()} km – {rings.outerRadiusKm.toLocaleString()} km from the
+        planet's center
+      </Text>
+      <Text>Discovered: {rings.discovered}</Text>
+    </Box>
+  );
+}
+
 function MoonSurface({ moon }: { moon: MoonId }): React.JSX.Element {
   const facts = MOON_FACTS[moon];
   return (
@@ -102,11 +120,14 @@ export default function ContentView({ nodeId, date, notes }: Props): React.JSX.E
   if (leaf.kind === "notes") return <Notes notes={notes} />;
 
   if (isKnownPlanet(leaf.owner)) {
-    return leaf.kind === "surface" ? (
-      <PlanetSurface planet={leaf.owner} />
-    ) : (
-      <PlanetOrbitLog planet={leaf.owner} date={date} />
-    );
+    switch (leaf.kind) {
+      case "surface":
+        return <PlanetSurface planet={leaf.owner} />;
+      case "rings":
+        return <PlanetRings planet={leaf.owner} />;
+      case "orbit-log":
+        return <PlanetOrbitLog planet={leaf.owner} date={date} />;
+    }
   }
 
   if (!isMoonId(leaf.owner)) {
