@@ -2,12 +2,53 @@ import React, { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import { polarToGrid } from "../layout.js";
 
-const FRAME_COUNT = 6;
+export type TransitionPhase = "approach" | "rotate" | "open" | "darkspot" | "traveling";
+
+interface Props {
+  gridWidth: number;
+  gridHeight: number;
+  /** How long the "traveling" phase lasts — real distance drives this, see layout.ts's computeTravelDurationMs. */
+  travelMs: number;
+  onPhaseChange: (phase: TransitionPhase) => void;
+  /** Fired once the whole sequence (setup + travel) has finished. */
+  onComplete: () => void;
+}
+
 const FRAME_MS = 200;
+const WORD_REFRESH_MS = 450;
 const ANGLE_STEP_DEG = 24;
+const STAR_RING_FRACTION = 0.35;
 // Mirrors layout.ts's private ASPECT_RATIO — terminal cells are taller
-// than they are wide, so the ring is stretched horizontally to read round.
+// than they are wide, so circles are stretched horizontally to read round.
 const ASPECT_RATIO = 2.1;
+
+// 12 setup steps, 3 each: approach the star, watch it turn, watch its
+// center open, get pulled into the dark spot at its heart. Only the
+// "traveling" phase after this (word-flicker, not step-counted) scales
+// with real distance — this cinematic setup is always the same length.
+const SETUP_PHASES: TransitionPhase[] = [
+  "approach", "approach", "approach",
+  "rotate", "rotate", "rotate",
+  "open", "open", "open",
+  "darkspot", "darkspot", "darkspot",
+];
+
+// A HUMAN, arms and legs, 3 rows x 3 cols — the default player identity
+// (see SCOPE.md's 2026-07-29 addendum). Only appears during the approach/
+// rotate/open phases; already consumed by the time the dark spot forms.
+const HUMAN_FIGURE = [" o ", "/|\\", "/ \\"];
+
+// Quantum data drifting past as the HUMAN mind bends and becomes part of
+// the universe — alien thoughts, alien machine messages, whatever. Mixed
+// on purpose: single words, binary-ish noise, short cryptic phrases.
+const QUANTUM_WORDS = [
+  "ERROR", "VOID", "NULL", "ECHO", "STATIC", "ENTROPY",
+  "01001000 01001001", "??????", "SIGNAL LOST", "WHO ARE YOU",
+  "WE SEE YOU", "PATTERN RECOGNIZED", "OBSERVER DETECTED",
+  "COORDINATES UNKNOWN", "MEMORY FRAGMENT", "WAVEFORM COLLAPSE",
+  "TRANSMISSION", "UNKNOWN ORIGIN", "FREQUENCY SHIFT", "DATA CORRUPT",
+  "YOU ARE OBSERVED", "ALIEN SIGNAL", "BECOME", "..--. .-. .",
+];
 
 interface Cell {
   char: string;
@@ -15,33 +56,130 @@ interface Cell {
   bold?: boolean;
 }
 
-interface Props {
-  gridWidth: number;
-  gridHeight: number;
-  /** Fired once the last frame has shown. */
-  onComplete: () => void;
+interface TravelWord {
+  word: string;
+  row: number;
+  col: number;
 }
 
-/** "Diving through a star": a ring expands from the center each frame. */
-function buildFrame(frame: number, gridWidth: number, gridHeight: number): Cell[][] {
-  const grid: Cell[][] = Array.from({ length: gridHeight }, () =>
-    Array.from({ length: gridWidth }, () => ({ char: " " }))
-  );
+function blankGrid(gridWidth: number, gridHeight: number): Cell[][] {
+  return Array.from({ length: gridHeight }, () => Array.from({ length: gridWidth }, () => ({ char: " " })));
+}
+
+function inBounds(x: number, y: number, gridWidth: number, gridHeight: number): boolean {
+  return x >= 0 && x < gridWidth && y >= 0 && y < gridHeight;
+}
+
+function stampStarRing(
+  grid: Cell[][],
+  centerX: number,
+  centerY: number,
+  radius: number,
+  angleOffsetDeg: number,
+  gridWidth: number,
+  gridHeight: number
+): void {
+  for (let angle = 0; angle < 360; angle += ANGLE_STEP_DEG) {
+    const { x, y } = polarToGrid(centerX, centerY, angle + angleOffsetDeg, radius);
+    if (inBounds(x, y, gridWidth, gridHeight)) grid[y][x] = { char: "o", color: "yellow", bold: true };
+  }
+}
+
+/** The HUMAN, fixed straight-up (90°) from the star so its shape never needs to rotate. */
+function stampHuman(
+  grid: Cell[][],
+  centerX: number,
+  centerY: number,
+  radius: number,
+  gridWidth: number,
+  gridHeight: number
+): void {
+  const { x, y } = polarToGrid(centerX, centerY, 90, radius);
+  for (let r = 0; r < HUMAN_FIGURE.length; r++) {
+    const row = y - 1 + r;
+    if (row < 0 || row >= gridHeight) continue;
+    const line = HUMAN_FIGURE[r];
+    for (let c = 0; c < line.length; c++) {
+      const col = x - 1 + c;
+      if (col < 0 || col >= gridWidth || line[c] === " ") continue;
+      grid[row][col] = { char: line[c], color: "cyan", bold: true };
+    }
+  }
+}
+
+function fillDisk(
+  grid: Cell[][],
+  centerX: number,
+  centerY: number,
+  radius: number,
+  char: string,
+  color: string,
+  gridWidth: number,
+  gridHeight: number
+): void {
+  for (let y = 0; y < gridHeight; y++) {
+    for (let x = 0; x < gridWidth; x++) {
+      const dx = (x - centerX) / ASPECT_RATIO;
+      const dy = y - centerY;
+      if (Math.sqrt(dx * dx + dy * dy) <= radius) grid[y][x] = { char, color, bold: true };
+    }
+  }
+}
+
+function buildSetupFrame(step: number, gridWidth: number, gridHeight: number): Cell[][] {
+  const grid = blankGrid(gridWidth, gridHeight);
   const centerX = Math.floor(gridWidth / 2);
   const centerY = Math.floor(gridHeight / 2);
-  const maxRadius = Math.max(1, Math.floor(Math.min(gridHeight, gridWidth / ASPECT_RATIO) / 2) - 1);
-  const radius = ((frame + 1) / FRAME_COUNT) * maxRadius;
+  const maxRadius = Math.max(2, Math.floor(Math.min(gridHeight, gridWidth / ASPECT_RATIO) / 2) - 1);
+  const ringRadius = Math.max(2, Math.round(maxRadius * STAR_RING_FRACTION));
+  const phase = SETUP_PHASES[step];
+  const subStep = step % 3;
+  const ringAngleOffset = step * 15;
 
-  for (let angle = 0; angle < 360; angle += ANGLE_STEP_DEG) {
-    const { x, y } = polarToGrid(centerX, centerY, angle, radius);
-    if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) continue;
-    grid[y][x] = { char: "*", color: "yellow", bold: true };
-  }
-  // A bright flash at the center fades as the ring expands away from it.
-  if (frame < FRAME_COUNT - 2) {
-    grid[centerY][centerX] = { char: "@", color: "yellow", bold: true };
+  if (phase === "approach" || phase === "rotate" || phase === "open") {
+    stampStarRing(grid, centerX, centerY, ringRadius, ringAngleOffset, gridWidth, gridHeight);
   }
 
+  if (phase === "approach") {
+    const radii = [maxRadius, maxRadius * 0.6, ringRadius + 2];
+    stampHuman(grid, centerX, centerY, radii[subStep], gridWidth, gridHeight);
+  } else if (phase === "rotate") {
+    stampHuman(grid, centerX, centerY, ringRadius, gridWidth, gridHeight);
+  } else if (phase === "open") {
+    if (subStep === 0) stampHuman(grid, centerX, centerY, ringRadius, gridWidth, gridHeight);
+    const diskChar = subStep === 0 ? "▒" : subStep === 1 ? "▓" : "█";
+    fillDisk(grid, centerX, centerY, subStep + 1, diskChar, "yellow", gridWidth, gridHeight);
+  } else if (phase === "darkspot") {
+    const radii = [2, 5, Math.max(gridWidth, gridHeight)];
+    fillDisk(grid, centerX, centerY, radii[subStep], "█", "gray", gridWidth, gridHeight);
+  }
+
+  return grid;
+}
+
+function pickRandomWords(gridWidth: number, gridHeight: number): TravelWord[] {
+  const count = 1 + Math.floor(Math.random() * 3);
+  const words: TravelWord[] = [];
+  for (let i = 0; i < count; i++) {
+    const word = QUANTUM_WORDS[Math.floor(Math.random() * QUANTUM_WORDS.length)];
+    const row = Math.floor(Math.random() * gridHeight);
+    const maxCol = Math.max(0, gridWidth - word.length);
+    const col = Math.floor(Math.random() * (maxCol + 1));
+    words.push({ word, row, col });
+  }
+  return words;
+}
+
+function buildTravelingFrame(words: TravelWord[], gridWidth: number, gridHeight: number): Cell[][] {
+  const grid = blankGrid(gridWidth, gridHeight);
+  for (const { word, row, col } of words) {
+    if (row < 0 || row >= gridHeight) continue;
+    for (let i = 0; i < word.length; i++) {
+      const c = col + i;
+      if (c < 0 || c >= gridWidth) continue;
+      grid[row][c] = { char: word[i], color: "magenta", bold: false };
+    }
+  }
   return grid;
 }
 
@@ -66,19 +204,40 @@ function TransitionRow({ row }: { row: Cell[] }): React.JSX.Element {
   );
 }
 
-export default function WarpTransition({ gridWidth, gridHeight, onComplete }: Props): React.JSX.Element {
-  const [frame, setFrame] = useState(0);
+export default function WarpTransition({ gridWidth, gridHeight, travelMs, onPhaseChange, onComplete }: Props): React.JSX.Element {
+  const [step, setStep] = useState(0);
+  const [traveling, setTraveling] = useState(false);
+  const [travelWords, setTravelWords] = useState<TravelWord[]>([]);
 
   useEffect(() => {
+    if (traveling) return;
     const id = setTimeout(() => {
-      if (frame < FRAME_COUNT - 1) setFrame((f) => f + 1);
-      else onComplete();
+      if (step < SETUP_PHASES.length - 1) setStep((s) => s + 1);
+      else setTraveling(true);
     }, FRAME_MS);
     return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frame]);
+  }, [step, traveling]);
 
-  const grid = buildFrame(frame, gridWidth, gridHeight);
+  useEffect(() => {
+    onPhaseChange(traveling ? "traveling" : SETUP_PHASES[step]);
+    // Reporting the derived phase whenever step/traveling change is the
+    // whole point — onPhaseChange itself isn't a dependency on purpose.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [traveling, step]);
+
+  useEffect(() => {
+    if (!traveling) return;
+    setTravelWords(pickRandomWords(gridWidth, gridHeight));
+    const wordId = setInterval(() => setTravelWords(pickRandomWords(gridWidth, gridHeight)), WORD_REFRESH_MS);
+    const doneId = setTimeout(onComplete, travelMs);
+    return () => {
+      clearInterval(wordId);
+      clearTimeout(doneId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [traveling]);
+
+  const grid = traveling ? buildTravelingFrame(travelWords, gridWidth, gridHeight) : buildSetupFrame(step, gridWidth, gridHeight);
 
   return (
     <Box flexDirection="column" borderStyle="round" paddingX={1}>

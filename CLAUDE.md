@@ -14,6 +14,27 @@ to keep in sync with the code, distinct from `SCOPE.md`'s vision and
 environment: prerequisites, setup, running, and how TUI changes get
 verified (no test framework yet, so this matters more than usual).
 
+## Capturing new vision paragraphs
+
+The user periodically drops a raw, stream-of-consciousness paragraph
+elaborating the vision (new mechanics, lore, tone) — the same way the
+original `SCOPE.md` content came in. Do this automatically, without
+being asked each time:
+
+1. Append it to `SCOPE.md` under `## Addenda`, as a new `### {date} —
+   {short title}` entry: a lightly-edited version first (fix
+   grammar/punctuation only — don't reorganize, cut, or reinterpret
+   content; preserve deliberate emphasis like ALL-CAPS terms exactly),
+   then the original raw text verbatim below it, matching the existing
+   `## Vision` / `## Original statement` pattern.
+2. Pull anything concrete enough to build from it into `SPEC.md` (how it
+   should work) and/or `ROADMAP.md` (noted for later, if not being built
+   now) — the addendum is the record of intent; `SPEC.md`/`ROADMAP.md`
+   are where it becomes actionable.
+3. Then do whatever was actually asked in the same message (implement
+   now, plan first, spec-only for later, etc.) — capturing the paragraph
+   is a documentation step alongside that, not a replacement for it.
+
 ## Project overview
 
 This repo actually contains two unrelated things:

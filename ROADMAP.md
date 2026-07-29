@@ -112,6 +112,12 @@ architecture doesn't foreclose them, but not actionable yet.
 
 - [ ] Story/narrative layer — RPG framing, possibly a real-world
       search/ARG element
+- [ ] Selectable/creatable player entity type — the default (and only
+      current option) is HUMAN, per `SCOPE.md`'s addendum; letting
+      players choose or create something else is explicitly future work
+- [ ] SHIP-based star travel as an alternative to the default SOLAR BASE
+      JUMP (see `SPEC.md`'s Player/Travel sections) — undefined beyond
+      "sometimes the HUMAN travels through the sun in SHIPS" in the vision
 - [ ] Interruptions / mass messages
 - [ ] Pickup-able objects with effects (food, water, ...) — explicitly
       "none required at this time" in the original vision, lowest priority

@@ -435,3 +435,10 @@ export function getDistanceUnitLabel(nodeId: string): string {
 export function isStarBoundary(fromId: string, toId: string): boolean {
   return (fromId === STARMAP_ID && isStarId(toId)) || (isStarId(fromId) && toId === STARMAP_ID);
 }
+
+/** Real distance from the Sun, in light-years — 0 for Sol itself. Drives how long a SOLAR BASE JUMP's travel phase takes. */
+export function getStarDistanceLy(starId: string): number {
+  if (starId === "sun") return 0;
+  if (isStarId(starId) && starId !== "sun") return STAR_FACTS[starId].distanceLy;
+  return 0;
+}

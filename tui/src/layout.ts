@@ -135,3 +135,20 @@ export function toClockHour(angleDeg: number): number {
   const hour = Math.round(raw) % 12;
   return hour === 0 ? 12 : hour;
 }
+
+export const MIN_TRAVEL_MS = 5000;
+export const MAX_TRAVEL_MS = 10000;
+// Matches worldTree.ts's STARMAP_DISPLAY_DOMAIN max — the farthest curated
+// star (PSR B1257+12) is the longest a SOLAR BASE JUMP can take.
+const MAX_KNOWN_DISTANCE_LY = 2300;
+
+/**
+ * How long the "traveling" phase of a star jump lasts, sqrt-scaled by real
+ * distance the same way display radius is — Sol itself (or anything close)
+ * takes MIN_TRAVEL_MS, the single farthest curated star takes MAX_TRAVEL_MS,
+ * everything else falls between.
+ */
+export function computeTravelDurationMs(distanceLy: number): number {
+  const t = Math.max(0, Math.min(1, Math.sqrt(Math.max(0, distanceLy)) / Math.sqrt(MAX_KNOWN_DISTANCE_LY)));
+  return Math.round(MIN_TRAVEL_MS + t * (MAX_TRAVEL_MS - MIN_TRAVEL_MS));
+}

@@ -3,8 +3,16 @@ import { Box, Text, useApp, useInput, useWindowSize } from "ink";
 import SolarView from "./components/SolarView.js";
 import ContentView from "./components/ContentView.js";
 import Prompt from "./components/Prompt.js";
-import WarpTransition from "./components/WarpTransition.js";
-import { applyZoom, computeAutoZoomLevel, computeGridPositions, toClockHour, ZOOM_MAX, ZOOM_MIN } from "./layout.js";
+import WarpTransition, { type TransitionPhase } from "./components/WarpTransition.js";
+import {
+  applyZoom,
+  computeAutoZoomLevel,
+  computeGridPositions,
+  computeTravelDurationMs,
+  toClockHour,
+  ZOOM_MAX,
+  ZOOM_MIN,
+} from "./layout.js";
 import { pickNextFocus } from "./spatialNav.js";
 import {
   getBreadcrumbLabel,
@@ -14,11 +22,22 @@ import {
   getDistanceUnitLabel,
   getNodeKind,
   getOrbitChildren,
+  getStarDistanceLy,
   isStarBoundary,
   parseLeafId,
 } from "./worldTree.js";
-import { STARMAP_ID } from "./starFacts.js";
+import { isStarId, STARMAP_ID } from "./starFacts.js";
 import { saveSession, type SessionData } from "./session.js";
+
+// Narrates each phase of a SOLAR BASE JUMP in the HUD while WarpTransition
+// plays the visuals — see SCOPE.md's 2026-07-29 addendum.
+const PHASE_MESSAGES: Record<TransitionPhase, (label: string) => string> = {
+  approach: (label) => `Approaching ${label}...`,
+  rotate: (label) => `${label} begins to turn...`,
+  open: () => "A path opens at its heart...",
+  darkspot: () => "Pulled into the GRAVITATIONAL WELL...",
+  traveling: () => "SOLAR BASE JUMP in progress — quantum data drifting past...",
+};
 
 const TICK_MS = 5000;
 const MAX_LOG_LINES = 4;
@@ -44,7 +63,10 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   const [path, setPath] = useState<string[]>(session.path);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(0);
-  const [transition, setTransition] = useState<{ nextPath: string[]; label: string; logLine: string } | null>(null);
+  const [transition, setTransition] = useState<{ nextPath: string[]; label: string; logLine: string; travelMs: number } | null>(
+    null
+  );
+  const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>("approach");
   const [mode, setMode] = useState<"nav" | "command">("nav");
   const [promptValue, setPromptValue] = useState("");
   const [log, setLog] = useState<string[]>(
@@ -117,6 +139,18 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
   const focused = children.find((c) => c.id === focusedId) ?? null;
 
+  /**
+   * A SOLAR BASE JUMP: whichever id involved is the star (Sol included) —
+   * the other side is always the star map — determines how long the
+   * travel phase takes.
+   */
+  function startStarTransition(nextPath: string[], label: string, logLine: string) {
+    const starId = isStarId(centerId) ? centerId : nextPath[nextPath.length - 1];
+    const travelMs = computeTravelDurationMs(getStarDistanceLy(starId));
+    setTransitionPhase("approach");
+    setTransition({ nextPath, label, logLine, travelMs });
+  }
+
   /** Pops one level back, animating the transition if it crosses the star/star-map boundary. Returns whether it did anything. */
   function goBack(): boolean {
     if (path.length <= 1) return false;
@@ -124,7 +158,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
     const newCenterId = nextPath[nextPath.length - 1];
     const logLine = `Back to ${getCenterLabel(newCenterId)}.`;
     if (isStarBoundary(centerId, newCenterId)) {
-      setTransition({ nextPath, label: getBreadcrumbLabel(centerId), logLine });
+      startStarTransition(nextPath, getBreadcrumbLabel(centerId), logLine);
     } else {
       setPath(nextPath);
       persist(nextPath);
@@ -176,7 +210,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
             const nextPath = [...path, focused.id];
             const logLine = `Traveled to ${focused.label}.`;
             if (isStarBoundary(centerId, focused.id)) {
-              setTransition({ nextPath, label: focused.label, logLine });
+              startStarTransition(nextPath, focused.label, logLine);
             } else {
               setPath(nextPath);
               persist(nextPath);
@@ -270,7 +304,13 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
     <Box flexDirection="column" width={cols} height={rowsSafe}>
       <Box flexDirection="column" height={topHeight} width={cols}>
         {transition ? (
-          <WarpTransition gridWidth={gridWidth} gridHeight={gridHeight} onComplete={completeTransition} />
+          <WarpTransition
+            gridWidth={gridWidth}
+            gridHeight={gridHeight}
+            travelMs={transition.travelMs}
+            onPhaseChange={setTransitionPhase}
+            onComplete={completeTransition}
+          />
         ) : isLeaf ? (
           <ContentView nodeId={centerId} date={now} notes={sessionRef.current.notes[centerId] ?? []} />
         ) : (
@@ -286,9 +326,10 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
       </Box>
       <Box flexDirection="column" borderStyle="round" paddingX={1} height={BOTTOM_PANEL_HEIGHT} width={cols} overflow="hidden">
         <Box justifyContent="space-between">
+          <Text bold>HUMAN</Text>
           <Text color={transition ? "yellow" : undefined} bold={Boolean(transition)}>
             {transition ? (
-              `Diving through ${transition.label}...`
+              PHASE_MESSAGES[transitionPhase](transition.label)
             ) : (
               <>
                 Centered on <Text bold>{centerLabel}</Text>
@@ -296,7 +337,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
               </>
             )}
           </Text>
-          {!isLeaf && !transition ? <Text dimColor>Zoom {(2 ** zoomLevel).toFixed(2)}x (+/-)</Text> : null}
+          {!isLeaf && !transition ? <Text dimColor>Zoom {(2 ** zoomLevel).toFixed(2)}x (+/-)</Text> : <Text> </Text>}
         </Box>
         <Text dimColor={!focused}>
           {transition

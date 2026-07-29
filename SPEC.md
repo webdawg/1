@@ -176,6 +176,29 @@ Enter travels to the focused entry, pushing it onto the navigation path;
 children rebuild for the new center via `getOrbitChildren`, and focus
 resets to the new set's first entry.
 
+## Player
+
+The player's entity type is not yet selectable or creatable — that's
+future work (`ROADMAP.md` Phase 6). The default, and currently only,
+entity type is **HUMAN** — always shown in capital letters, matching
+every other emphasized term from `SCOPE.md`'s addenda (SHIP, SOLAR BASE
+JUMP, GRAVITATIONAL WELL, STAR, DARK SPOT, QUANTUM, UNIVERSE). `App.tsx`
+shows it permanently in the bottom panel's top row, leftmost of a 3-way
+`justifyContent="space-between"` split (`HUMAN` — breadcrumb/transition
+status — zoom indicator) — persistent identity, not view state, so it's
+visible on every screen including leaf `ContentView` pages and mid-jump.
+
+During a SOLAR BASE JUMP specifically, the HUMAN is drawn as a small
+ASCII stick figure:
+```
+ o
+/|\
+/ \
+```
+3 rows × 3 cols, cyan/bold, anchored by its vertical center — see Star
+travel transition below for when it appears. It isn't a persistent map
+icon; it only exists inside the jump animation itself.
+
 ## Star travel transition
 
 Leaving a star (Sol included) back to the star map isn't only an Escape
@@ -198,18 +221,55 @@ fixed marker every other (non-star) view uses.
 Every Enter/Escape (and the `/back` command) is instant *except* one
 specific crossing: moving between the star map and a star (Sol included),
 in either direction — `worldTree.ts`'s `isStarBoundary(fromId, toId)`
-detects this. That move instead plays a ~1.2s "diving through the star"
-animation (`WarpTransition.tsx`: 6 frames of an expanding ring, reusing
-`layout.ts`'s `polarToGrid`, no new position math) before the path
-actually changes. While it plays: the top tile shows the animation
-instead of `SolarView`/`ContentView`, the bottom panel's breadcrumb/
-focused-info lines are replaced by a single `Diving through {label}...`
-status line, and `useInput` is gated off (`isActive: mode === "nav" &&
-!transition`) so no navigation input is processed mid-animation. The
-pending `{ nextPath, label, logLine }` is held in `App.tsx`'s `transition`
-state and only committed (`setPath`/`persist`/`pushLog`) when
-`WarpTransition` calls its `onComplete` callback — there's no independent
-timer to keep in sync with the animation's actual length.
+detects this. That move is the default travel method, a **SOLAR BASE
+JUMP**: every HUMAN can jump personally through a star's GRAVITATIONAL
+WELL to slingshot to the next STAR — no ship required. (**SHIPS** are an
+alternate method, not yet implemented — `ROADMAP.md` Phase 6.) It plays a
+multi-phase cinematic (`WarpTransition.tsx`) instead of an instant jump.
+While it plays: the top tile shows the animation instead of
+`SolarView`/`ContentView`, the bottom panel's middle slot shows a
+phase-specific status line instead of the breadcrumb (`App.tsx`'s
+`PHASE_MESSAGES` lookup), and `useInput` is gated off (`isActive: mode
+=== "nav" && !transition`) so no navigation input is processed
+mid-animation. The pending `{ nextPath, label, logLine, travelMs }` is
+held in `App.tsx`'s `transition` state and only committed
+(`setPath`/`persist`/`pushLog`) when `WarpTransition` calls its
+`onComplete` callback — there's no independent timer to keep in sync with
+the animation's actual length.
+
+Five phases, reported to `App.tsx` via `onPhaseChange` as they happen:
+
+1. **approach** (3 × 200ms) — a star ring (points on a circle at ~35% of
+   max radius) appears; the HUMAN steps inward toward it over the 3
+   frames, fixed at a straight-up angle so its shape never needs to
+   rotate. *"Approaching {label}..."*
+2. **rotate** (3 × 200ms) — the ring's points shift a few degrees each
+   frame (a simple spin illusion); the HUMAN arrives at the ring's edge.
+   *"{label} begins to turn..."*
+3. **open** (3 × 200ms) — a filled disk grows at the ring's center
+   (`▒`→`▓`→`█`, radius 1→2→3); the HUMAN is drawn once more on this
+   phase's first frame, then dropped (it's entering the opening).
+   *"A path opens at its heart..."*
+4. **darkspot** (3 × 200ms) — a solid-block disk expands from center
+   until it covers the grid; no HUMAN (already consumed).
+   *"Pulled into the GRAVITATIONAL WELL..."*
+5. **traveling** (`travelMs`, sqrt-scaled by real distance — see below;
+   *not* frame-counted) — blank grid, `QUANTUM_WORDS` (a curated mix of
+   single evocative words, binary-ish noise, and short alien/machine
+   phrases) flicker in at random positions every ~450ms, representing
+   quantum data emerging as the HUMAN mind becomes part of the universe.
+   *"SOLAR BASE JUMP in progress — quantum data drifting past..."*
+
+The first four phases are always a fixed ~2.4s total, regardless of
+distance — only the travel phase scales:
+`layout.ts`'s `computeTravelDurationMs(distanceLy)` sqrt-scales real
+light-year distance (`worldTree.ts`'s `getStarDistanceLy`, 0 for Sol)
+between `MIN_TRAVEL_MS` (5000, at 0 ly) and `MAX_TRAVEL_MS` (10000, at
+the farthest curated star, PSR B1257+12's 2300 ly) — matching the vision
+text's "5-10 seconds depending on the distance" precisely. Computed once
+per jump (`App.tsx`'s `startStarTransition`, shared by both the forward
+`key.return` case and `goBack()`) from whichever id involved in the
+crossing is the star.
 
 ## Session model
 
