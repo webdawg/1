@@ -6,7 +6,10 @@ See `SCOPE.md` for the founding vision statement — the long-term idea behind
 this project, well beyond what's currently built. Not a spec, just the
 north star for judging where features should eventually head. See
 `ROADMAP.md` for the phased plan derived from it — check there for
-what's next before starting new work.
+what's next before starting new work. See `DEVELOPMENT.md` for the
+development environment: prerequisites, setup, running, and how TUI
+changes get verified (no test framework yet, so this matters more than
+usual).
 
 ## Project overview
 
