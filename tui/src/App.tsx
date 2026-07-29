@@ -4,7 +4,7 @@ import SolarView from "./components/SolarView.js";
 import ContentView from "./components/ContentView.js";
 import Prompt from "./components/Prompt.js";
 import WarpTransition from "./components/WarpTransition.js";
-import { computeGridPositions, toClockHour } from "./layout.js";
+import { applyZoom, computeGridPositions, toClockHour, ZOOM_MAX, ZOOM_MIN } from "./layout.js";
 import { pickNextFocus } from "./spatialNav.js";
 import {
   getBreadcrumbLabel,
@@ -42,6 +42,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
   const [path, setPath] = useState<string[]>(session.path);
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(0);
   const [transition, setTransition] = useState<{ nextPath: string[]; label: string; logLine: string } | null>(null);
   const [mode, setMode] = useState<"nav" | "command">("nav");
   const [promptValue, setPromptValue] = useState("");
@@ -95,6 +96,14 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
     setFocusedId((prev) => (prev && children.some((c) => c.id === prev) ? prev : (children[0]?.id ?? null)));
   }, [children]);
 
+  // Zoom is a property of the current view, not something that should
+  // follow you to a different one.
+  useEffect(() => {
+    setZoomLevel(0);
+  }, [centerId]);
+
+  const zoomedDomain = useMemo(() => applyZoom(domain, zoomLevel), [domain, zoomLevel]);
+
   const focused = children.find((c) => c.id === focusedId) ?? null;
 
   /** Pops one level back, animating the transition if it crosses the star/star-map boundary. Returns whether it did anything. */
@@ -123,8 +132,8 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   const gridWidth = Math.max(MIN_GRID_WIDTH, cols - 4);
   const gridHeight = Math.max(MIN_GRID_HEIGHT, topHeight - 2);
   const positions = useMemo(
-    () => computeGridPositions(children, domain, gridWidth, gridHeight),
-    [children, domain, gridWidth, gridHeight]
+    () => computeGridPositions(children, zoomedDomain, gridWidth, gridHeight),
+    [children, zoomedDomain, gridWidth, gridHeight]
   );
 
   useInput(
@@ -168,6 +177,16 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
       }
       if (key.escape || key.backspace) {
         goBack();
+        return;
+      }
+      // Zoom only means something for the spatial grid, not a leaf's
+      // detail screen — "=" is unshifted "+" on most keyboards.
+      if (!isLeaf && (input === "+" || input === "=")) {
+        setZoomLevel((z) => Math.min(ZOOM_MAX, z + 1));
+        return;
+      }
+      if (!isLeaf && (input === "-" || input === "_")) {
+        setZoomLevel((z) => Math.max(ZOOM_MIN, z - 1));
         return;
       }
       if (input === "/" || input === ":") {
@@ -247,7 +266,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
           <SolarView
             centerGlyph={getCenterGlyph(centerId)}
             orbitEntries={children}
-            domain={domain}
+            domain={zoomedDomain}
             focusedId={focusedId}
             gridWidth={gridWidth}
             gridHeight={gridHeight}
@@ -255,16 +274,19 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         )}
       </Box>
       <Box flexDirection="column" borderStyle="round" paddingX={1} height={BOTTOM_PANEL_HEIGHT} width={cols} overflow="hidden">
-        <Text color={transition ? "yellow" : undefined} bold={Boolean(transition)}>
-          {transition ? (
-            `Diving through ${transition.label}...`
-          ) : (
-            <>
-              Centered on <Text bold>{centerLabel}</Text>
-              {path.length > 1 ? `  (${path.map(getBreadcrumbLabel).join(" > ")})` : ""}
-            </>
-          )}
-        </Text>
+        <Box justifyContent="space-between">
+          <Text color={transition ? "yellow" : undefined} bold={Boolean(transition)}>
+            {transition ? (
+              `Diving through ${transition.label}...`
+            ) : (
+              <>
+                Centered on <Text bold>{centerLabel}</Text>
+                {path.length > 1 ? `  (${path.map(getBreadcrumbLabel).join(" > ")})` : ""}
+              </>
+            )}
+          </Text>
+          {!isLeaf && !transition ? <Text dimColor>Zoom {(2 ** zoomLevel).toFixed(2)}x (+/-)</Text> : null}
+        </Box>
         <Text dimColor={!focused}>
           {transition
             ? ""

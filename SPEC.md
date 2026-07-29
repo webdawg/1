@@ -65,6 +65,30 @@ where something is.
 the border. Getting this wrong doesn't error; it silently corrupts the
 box's bottom border in this Ink version. See `DEVELOPMENT.md`.
 
+## Zoom
+
+Real distances can span orders of magnitude within one view (the star map
+alone runs from Sol at ~0 ly to PSR B1257+12 at 2300 ly) — sqrt scaling
+softens that, but a genuine outlier still leaves everything else
+compressed into a small fraction of the display no matter how gentle the
+curve. `+`/`=` and `-`/`_` step a per-view `zoomLevel` (`App.tsx`, clamped
+to `layout.ts`'s `ZOOM_MIN`/`ZOOM_MAX`, currently -2..6) through
+`applyZoom(domain, zoomLevel)`: a `2 ** zoomLevel` multiplier that shrinks
+(zoom in) or grows (zoom out) the domain's span around its minimum,
+leaving `minRadius`/`maxRadius` untouched. The resulting `zoomedDomain` is
+used for *both* `SolarView`'s rendering and `App.tsx`'s own
+`computeGridPositions` call for spatial-nav positions, so what you see and
+what arrow keys navigate to never disagree. Zooming in spreads out
+whatever's near you, at the cost of pinning anything beyond the new
+effective max to the outer rim — the same clamp-to-edge behavior
+out-of-domain distances already had, just reachable interactively instead
+of only happening to comets. Zoom is a property of the current view, not
+a global setting: it resets to 1.00x whenever `centerId` changes, and has
+no effect (and shows no indicator) on a leaf's `ContentView` screen, where
+there's no spatial grid for it to apply to. The current multiplier is
+shown top-right of the bottom panel's breadcrumb row (a `Box` with
+`justifyContent="space-between"`).
+
 ## Icon system
 
 Every `OrbitEntry` renders as `{glyph} {label}`, one grid row, glyph

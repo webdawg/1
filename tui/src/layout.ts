@@ -41,6 +41,25 @@ export function scaleDistance(
   return minRadius + clamped * (maxRadius - minRadius);
 }
 
+export const ZOOM_MIN = -2;
+export const ZOOM_MAX = 6;
+
+/**
+ * Shrinks (positive zoomLevel) or expands (negative) a distance domain's
+ * span around its minimum, leaving minRadius/maxRadius untouched. A real
+ * outlier (e.g. one star hundreds of light-years further out than the
+ * rest) otherwise forces sqrt scaling to compress everything else into a
+ * small fraction of the display no matter how gentle the curve — zooming
+ * in trades "see the outlier" for "spread out what's near you," pinning
+ * anything past the new effective max to the outer rim exactly like an
+ * out-of-domain distance already does.
+ */
+export function applyZoom(domain: { min: number; max: number }, zoomLevel: number): { min: number; max: number } {
+  const factor = 2 ** zoomLevel;
+  const span = Math.max(0.0001, (domain.max - domain.min) / factor);
+  return { min: domain.min, max: domain.min + span };
+}
+
 interface PositionedEntry {
   id: string;
   angleDeg: number;
