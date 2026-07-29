@@ -128,6 +128,8 @@ export function getNodeKind(nodeId: string): NodeKind {
   if (isMoonId(nodeId)) return "moon";
   if (nodeId === BELT_ID) return "belt";
   if (isAsteroidId(nodeId)) return "asteroid";
+  if (nodeId === COMETS_HUB_ID) return "comets";
+  if (isCometId(nodeId)) return "comet";
   const leaf = parseLeafId(nodeId);
   return leaf ? leaf.kind : "planet";
 }
@@ -138,6 +140,8 @@ export function getCenterLabel(nodeId: string): string {
   if (isMoonId(nodeId)) return `${PLANET_META[MOON_FACTS[nodeId].parent].label} — ${MOON_FACTS[nodeId].label}`;
   if (nodeId === BELT_ID) return BELT_FACTS.label;
   if (isAsteroidId(nodeId)) return `${BELT_FACTS.label} — ${ASTEROID_FACTS[nodeId].label}`;
+  if (nodeId === COMETS_HUB_ID) return COMETS_HUB_FACTS.label;
+  if (isCometId(nodeId)) return `${COMETS_HUB_FACTS.label} — ${COMET_FACTS[nodeId].label}`;
   const leaf = parseLeafId(nodeId);
   if (leaf) return `${getOwnerLabel(leaf.owner)} — ${getBreadcrumbLabel(nodeId)}`;
   return nodeId;
@@ -147,17 +151,18 @@ export function getCenterLabel(nodeId: string): string {
 export function getBreadcrumbLabel(nodeId: string): string {
   if (isMoonId(nodeId)) return MOON_FACTS[nodeId].label;
   if (isAsteroidId(nodeId)) return ASTEROID_FACTS[nodeId].label;
+  if (isCometId(nodeId)) return COMET_FACTS[nodeId].label;
   const leaf = parseLeafId(nodeId);
   if (leaf) return LEAF_LABELS[leaf.kind];
   return getCenterLabel(nodeId);
 }
 
 function applicableLeafKinds(ownerId: string): LeafKind[] {
-  if (ownerId === BELT_ID) return ["surface", "notes"];
+  if (ownerId === BELT_ID || ownerId === COMETS_HUB_ID) return ["surface", "notes"];
   if (isKnownPlanet(ownerId)) {
     return hasRings(ownerId) ? ["surface", "orbit-log", "rings", "notes"] : ["surface", "orbit-log", "notes"];
   }
-  // moons and asteroids
+  // moons, asteroids, and comets
   return ["surface", "orbit-log", "notes"];
 }
 
@@ -180,6 +185,7 @@ export function getDistanceDomain(nodeId: string): DistanceDomain {
   if (nodeId === BELT_ID) {
     return { min: 1, max: leafChildren(nodeId).length + getAsteroidsSortedByDistance().length };
   }
+  if (nodeId === COMETS_HUB_ID) return COMET_DISPLAY_DOMAIN;
   return LEAF_DOMAIN;
 }
 
@@ -199,7 +205,14 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
       angleDeg: BELT_FACTS.displayAngleDeg,
       distance: BELT_FACTS.displayDistanceAU,
     };
-    return [...planetEntries, beltEntry];
+    const cometsHubEntry: OrbitEntry = {
+      id: COMETS_HUB_ID,
+      label: COMETS_HUB_FACTS.label,
+      glyph: "^",
+      angleDeg: COMETS_HUB_FACTS.displayAngleDeg,
+      distance: COMETS_HUB_FACTS.displayDistanceAU,
+    };
+    return [...planetEntries, beltEntry, cometsHubEntry];
   }
 
   if (isKnownPlanet(nodeId)) {
@@ -232,7 +245,23 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
     return [...leaves, ...asteroidEntries];
   }
 
-  if (isMoonId(nodeId) || isAsteroidId(nodeId)) return leafChildren(nodeId);
+  if (nodeId === COMETS_HUB_ID) {
+    const leaves = leafChildren(nodeId);
+    const cometEntries: OrbitEntry[] = COMET_ORDER.map((cometId) => {
+      const facts = COMET_FACTS[cometId];
+      const position = getCometPosition(cometId, date);
+      return {
+        id: cometId,
+        label: facts.label,
+        glyph: "'",
+        angleDeg: position.angleDeg,
+        distance: position.distanceAU,
+      };
+    });
+    return [...leaves, ...cometEntries];
+  }
+
+  if (isMoonId(nodeId) || isAsteroidId(nodeId) || isCometId(nodeId)) return leafChildren(nodeId);
 
   return [];
 }

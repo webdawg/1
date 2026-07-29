@@ -6,6 +6,7 @@ import { getMoonsOf, isMoonId, MOON_FACTS, type MoonId } from "../moonFacts.js";
 import { RING_FACTS } from "../ringFacts.js";
 import { ASTEROID_FACTS, isAsteroidId, type AsteroidId } from "../asteroidFacts.js";
 import { BELT_FACTS, BELT_ID } from "../beltFacts.js";
+import { COMET_FACTS, COMETS_HUB_FACTS, COMETS_HUB_ID, getCometPosition, isCometId, type CometId } from "../cometFacts.js";
 import { getAsteroidPosition, getMoonPosition, isKnownPlanet, parseLeafId } from "../worldTree.js";
 
 interface Props {
@@ -143,6 +144,52 @@ function AsteroidOrbitLog({ asteroid, date }: { asteroid: AsteroidId; date: Date
   );
 }
 
+function CometsHubSurface(): React.JSX.Element {
+  return (
+    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+      <Text italic>{COMETS_HUB_FACTS.description}</Text>
+      <Text> </Text>
+      <Text>{COMETS_HUB_FACTS.originNote}</Text>
+    </Box>
+  );
+}
+
+function CometSurface({ comet }: { comet: CometId }): React.JSX.Element {
+  const facts = COMET_FACTS[comet];
+  return (
+    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+      <Text italic>{facts.description}</Text>
+      <Text> </Text>
+      <Text>Nucleus diameter: {facts.nucleusDiameterKm.toLocaleString()} km</Text>
+      <Text>
+        Perihelion: {facts.perihelionAU} AU — Aphelion: {facts.aphelionAU.toLocaleString()} AU
+      </Text>
+      <Text>
+        Orbital period: {formatDays(facts.orbitalPeriodYears * 365.25)}
+        {facts.periodUncertain ? " (uncertain — easily perturbed)" : ""}
+      </Text>
+      <Text>Last perihelion: {facts.lastPerihelion}</Text>
+    </Box>
+  );
+}
+
+function CometOrbitLog({ comet, date }: { comet: CometId; date: Date }): React.JSX.Element {
+  const facts = COMET_FACTS[comet];
+  const position = getCometPosition(comet, date);
+  return (
+    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+      <Text>Distance from Sun right now: {position.distanceAU.toFixed(2)} AU</Text>
+      <Text>
+        Position: {toClockHour(position.angleDeg)} o'clock ({position.angleDeg.toFixed(1)}° from perihelion)
+      </Text>
+      <Text>
+        Orbital period: {formatDays(facts.orbitalPeriodYears * 365.25)}
+        {facts.periodUncertain ? " (uncertain)" : ""}
+      </Text>
+    </Box>
+  );
+}
+
 function Notes({ notes }: { notes: string[] }): React.JSX.Element {
   return (
     <Box flexDirection="column" borderStyle="round" paddingX={1}>
@@ -191,6 +238,18 @@ export default function ContentView({ nodeId, date, notes }: Props): React.JSX.E
       <AsteroidSurface asteroid={leaf.owner} />
     ) : (
       <AsteroidOrbitLog asteroid={leaf.owner} date={date} />
+    );
+  }
+
+  if (leaf.owner === COMETS_HUB_ID) {
+    return leaf.kind === "surface" ? <CometsHubSurface /> : <Text dimColor>Nothing here.</Text>;
+  }
+
+  if (isCometId(leaf.owner)) {
+    return leaf.kind === "surface" ? (
+      <CometSurface comet={leaf.owner} />
+    ) : (
+      <CometOrbitLog comet={leaf.owner} date={date} />
     );
   }
 

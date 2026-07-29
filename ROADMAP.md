@@ -39,7 +39,7 @@ replace it.
 More to explore before this feels like "the solar system," plus the
 BBS-style social layer the vision calls for.
 
-- [ ] Comets (in progress — see `CLAUDE.md` Current status for exact state)
+- [x] Comets (Halley, Encke, Hale-Bopp, Hyakutake — full Kepler positions)
 - [ ] Dwarf planets (Pluto, Ceres, Eris, ...)
 - [ ] Bots / NPCs at locations ("there may be bots there")
 - [ ] Leave-messages-for-others feature (BBS-style)
