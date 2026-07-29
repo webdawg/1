@@ -83,6 +83,12 @@ visual grid.
 The "this isn't just a simulation" layer: rooting the engine's coordinate
 system in real time/space, and eventually real objects.
 
+- [x] Curated star map — travel from the Sun to ~16 real nearby star
+      systems (Proxima Centauri, TRAPPIST-1, 51 Pegasi, PSR B1257+12, ...)
+      with real curated exoplanet data, via a "dive through the star"
+      transition. Pulled forward ahead of the rest of this phase — static
+      curated data (same pattern as every other `*Facts.ts` file), not a
+      live coordinate system or real object feed yet.
 - [ ] Universal coordinate system anchored to a defined origin, factoring
       in galactic motion + time + Earth position (time-based galactic
       position)

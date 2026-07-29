@@ -16,7 +16,7 @@ export interface SessionData {
   sessionId: string;
   resumeKey: string;
   createdAt: string;
-  /** Navigation stack from the Sun down to the current center; last entry is "here". */
+  /** Navigation stack from the star map down to the current center; last entry is "here". */
   path: string[];
   /** Freeform notes saved per node id. */
   notes: Record<string, string[]>;
@@ -35,7 +35,10 @@ export function createSession(): SessionData {
     sessionId: token(6),
     resumeKey: token(12),
     createdAt: new Date().toISOString(),
-    path: ["sun"],
+    // Opens on the familiar Sol view, but with the star map already in the
+    // path history — must match worldTree.ts's STARMAP_ID/"sun", otherwise
+    // the star map is unreachable (Escape only pops existing path entries).
+    path: ["starmap", "sun"],
     notes: {},
   };
 }

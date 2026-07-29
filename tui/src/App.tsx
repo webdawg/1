@@ -3,6 +3,7 @@ import { Box, Text, useApp, useInput, useWindowSize } from "ink";
 import SolarView from "./components/SolarView.js";
 import ContentView from "./components/ContentView.js";
 import Prompt from "./components/Prompt.js";
+import WarpTransition from "./components/WarpTransition.js";
 import { computeGridPositions, toClockHour } from "./layout.js";
 import { pickNextFocus } from "./spatialNav.js";
 import {
@@ -10,8 +11,10 @@ import {
   getCenterGlyph,
   getCenterLabel,
   getDistanceDomain,
+  getDistanceUnitLabel,
   getNodeKind,
   getOrbitChildren,
+  isStarBoundary,
 } from "./worldTree.js";
 import { saveSession, type SessionData } from "./session.js";
 
@@ -38,6 +41,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
   const [path, setPath] = useState<string[]>(session.path);
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [transition, setTransition] = useState<{ nextPath: string[]; label: string; logLine: string } | null>(null);
   const [mode, setMode] = useState<"nav" | "command">("nav");
   const [promptValue, setPromptValue] = useState("");
   const [log, setLog] = useState<string[]>(
@@ -57,6 +61,17 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
   function pushLog(line: string) {
     setLog((prev) => [...prev.slice(-(MAX_LOG_LINES - 1)), line]);
+  }
+
+  /** Commits a travel that was held back for the "diving through a star" animation. */
+  function completeTransition() {
+    setTransition((current) => {
+      if (!current) return current;
+      setPath(current.nextPath);
+      persist(current.nextPath);
+      pushLog(current.logLine);
+      return null;
+    });
   }
 
   function persist(nextPath: string[]) {
@@ -116,18 +131,29 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
       if (key.return) {
         if (focused) {
           const nextPath = [...path, focused.id];
-          setPath(nextPath);
-          persist(nextPath);
-          pushLog(`Traveled to ${focused.label}.`);
+          const logLine = `Traveled to ${focused.label}.`;
+          if (isStarBoundary(centerId, focused.id)) {
+            setTransition({ nextPath, label: focused.label, logLine });
+          } else {
+            setPath(nextPath);
+            persist(nextPath);
+            pushLog(logLine);
+          }
         }
         return;
       }
       if (key.escape || key.backspace) {
         if (path.length > 1) {
           const nextPath = path.slice(0, -1);
-          setPath(nextPath);
-          persist(nextPath);
-          pushLog(`Back to ${getCenterLabel(nextPath[nextPath.length - 1])}.`);
+          const newCenterId = nextPath[nextPath.length - 1];
+          const logLine = `Back to ${getCenterLabel(newCenterId)}.`;
+          if (isStarBoundary(centerId, newCenterId)) {
+            setTransition({ nextPath, label: getBreadcrumbLabel(centerId), logLine });
+          } else {
+            setPath(nextPath);
+            persist(nextPath);
+            pushLog(logLine);
+          }
         }
         return;
       }
@@ -135,7 +161,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         setMode("command");
       }
     },
-    { isActive: mode === "nav" }
+    { isActive: mode === "nav" && !transition }
   );
 
   function handlePromptChange(value: string) {
@@ -167,11 +193,17 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
       case "back": {
         if (path.length > 1) {
           const nextPath = path.slice(0, -1);
-          setPath(nextPath);
-          persist(nextPath);
-          pushLog(`Back to ${getCenterLabel(nextPath[nextPath.length - 1])}.`);
+          const newCenterId = nextPath[nextPath.length - 1];
+          const logLine = `Back to ${getCenterLabel(newCenterId)}.`;
+          if (isStarBoundary(centerId, newCenterId)) {
+            setTransition({ nextPath, label: getBreadcrumbLabel(centerId), logLine });
+          } else {
+            setPath(nextPath);
+            persist(nextPath);
+            pushLog(logLine);
+          }
         } else {
-          pushLog("Already at the Sun.");
+          pushLog(`Already at ${centerLabel}.`);
         }
         break;
       }
@@ -207,7 +239,9 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   return (
     <Box flexDirection="column" width={cols} height={rowsSafe}>
       <Box flexDirection="column" height={topHeight} width={cols}>
-        {isLeaf ? (
+        {transition ? (
+          <WarpTransition gridWidth={gridWidth} gridHeight={gridHeight} onComplete={completeTransition} />
+        ) : isLeaf ? (
           <ContentView nodeId={centerId} date={now} notes={sessionRef.current.notes[centerId] ?? []} />
         ) : (
           <SolarView
@@ -221,14 +255,22 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         )}
       </Box>
       <Box flexDirection="column" borderStyle="round" paddingX={1} height={BOTTOM_PANEL_HEIGHT} width={cols} overflow="hidden">
-        <Text>
-          Centered on <Text bold>{centerLabel}</Text>
-          {path.length > 1 ? `  (${path.map(getBreadcrumbLabel).join(" > ")})` : ""}
+        <Text color={transition ? "yellow" : undefined} bold={Boolean(transition)}>
+          {transition ? (
+            `Diving through ${transition.label}...`
+          ) : (
+            <>
+              Centered on <Text bold>{centerLabel}</Text>
+              {path.length > 1 ? `  (${path.map(getBreadcrumbLabel).join(" > ")})` : ""}
+            </>
+          )}
         </Text>
         <Text dimColor={!focused}>
-          {focused
-            ? `${focused.label} — ${toClockHour(focused.angleDeg)} o'clock, ${focused.distance.toFixed(2)}${centerId === "sun" ? " AU" : ""}`
-            : "No orbiting bodies here."}
+          {transition
+            ? ""
+            : focused
+              ? `${focused.label} — ${toClockHour(focused.angleDeg)} o'clock, ${focused.distance.toFixed(2)}${getDistanceUnitLabel(centerId)}`
+              : "No orbiting bodies here."}
         </Text>
         {Array.from({ length: MAX_LOG_LINES }).map((_, idx) => (
           <Text key={idx} dimColor>

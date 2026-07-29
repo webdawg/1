@@ -1,15 +1,17 @@
 /**
  * The recursive "center + orbiting things" world model. Whatever node you're
- * centered on, this returns what orbits it. The Sun's children are the
- * planets (real orbital data via ../orbital.ts) plus the asteroid belt
- * (a single fixed representative point, since the real belt spans every
- * angle at once). A planet's children are its major moons plus leaves
- * (Surface, Orbit Log, optionally Rings, Notes); the belt's children are its
- * largest asteroids plus Surface/Notes leaves. Moons and asteroids are
- * positioned by simple mean motion — a circular approximation, not full
- * ephemeris — and get the same generic leaves as a terminal ring. Later, a
- * node's children can come from a server instead of being computed locally,
- * without changing anything above this module.
+ * centered on, this returns what orbits it. The star map's children are Sol
+ * (the Sun, unchanged from before this level existed) plus real nearby
+ * stars; a star's children are its curated real exoplanets. The Sun's
+ * children are the planets (real orbital data via ../orbital.ts) plus the
+ * asteroid belt (a single fixed representative point, since the real belt
+ * spans every angle at once). A planet's children are its major moons plus
+ * leaves (Surface, Orbit Log, optionally Rings, Notes); the belt's children
+ * are its largest asteroids plus Surface/Notes leaves. Moons, asteroids, and
+ * exoplanets are positioned by simple mean motion — a circular
+ * approximation, not full ephemeris — and get the same generic leaves as a
+ * terminal ring. Later, a node's children can come from a server instead of
+ * being computed locally, without changing anything above this module.
  */
 import { daysSinceJ2000, getPlanetPositions, PLANET_ORDER, type PlanetName } from "./orbital.js";
 import { getMoonsOf, isMoonId, MOON_FACTS, type MoonId } from "./moonFacts.js";
@@ -17,9 +19,32 @@ import { hasRings } from "./ringFacts.js";
 import { ASTEROID_FACTS, getAsteroidsSortedByDistance, isAsteroidId, type AsteroidId } from "./asteroidFacts.js";
 import { BELT_FACTS, BELT_ID } from "./beltFacts.js";
 import { COMET_FACTS, COMET_ORDER, COMETS_HUB_FACTS, COMETS_HUB_ID, getCometPosition, isCometId } from "./cometFacts.js";
+import {
+  EXOPLANET_FACTS,
+  STAR_FACTS,
+  STAR_ORDER,
+  STARMAP_FACTS,
+  STARMAP_ID,
+  getExoplanetsOfStar,
+  isExoplanetId,
+  isStarId,
+  type ExoplanetId,
+  type ExoplanetKind,
+} from "./starFacts.js";
 
 export type LeafKind = "surface" | "orbit-log" | "rings" | "notes";
-export type NodeKind = "sun" | "planet" | "moon" | "belt" | "asteroid" | "comets" | "comet" | LeafKind;
+export type NodeKind =
+  | "sun"
+  | "planet"
+  | "moon"
+  | "belt"
+  | "asteroid"
+  | "comets"
+  | "comet"
+  | "starmap"
+  | "star"
+  | "exoplanet"
+  | LeafKind;
 
 export interface OrbitEntry {
   id: string;
@@ -45,6 +70,11 @@ export interface AsteroidPosition {
   distanceAU: number;
 }
 
+export interface ExoplanetPosition {
+  angleDeg: number;
+  distanceAU: number;
+}
+
 // Bracket style signals category before you even read the letter inside:
 // (x) terrestrial planet, =x= ringed gas/ice giant, .m. moon, {x} belt
 // body, ~x~ comet-family body, » menu-style leaf (not a physical body).
@@ -66,12 +96,16 @@ const ASTEROID_GLYPH = "{.}";
 const COMETS_HUB_GLYPH = "~^~";
 const COMET_GLYPH = "~'~";
 const LEAF_GLYPH = "»";
+const STARMAP_GLYPH = "{*}";
+const EXOPLANET_GLYPH: Record<ExoplanetKind, string> = { rocky: "(e)", "gas-giant": "=g=" };
 
 const SUN_AU_DOMAIN: DistanceDomain = { min: 0.38, max: 30.1 };
 const LEAF_DOMAIN: DistanceDomain = { min: 1, max: 3 };
 // Comets range from well under 1 AU to hundreds of AU; anything past this
 // simply pins to the outer edge of the display (scaleDistance clamps).
 const COMET_DISPLAY_DOMAIN: DistanceDomain = { min: 0.2, max: 40 };
+// Sol sits at distance 0; PSR B1257+12 is the most distant curated star.
+const STARMAP_DISPLAY_DOMAIN: DistanceDomain = { min: 0, max: 2300 };
 
 const LEAF_LABELS: Record<LeafKind, string> = {
   surface: "Surface",
@@ -109,6 +143,14 @@ export function getAsteroidPosition(asteroidId: AsteroidId, date: Date): Asteroi
   };
 }
 
+export function getExoplanetPosition(exoplanetId: ExoplanetId, date: Date): ExoplanetPosition {
+  const facts = EXOPLANET_FACTS[exoplanetId];
+  return {
+    angleDeg: meanMotionAngle(exoplanetId, date, facts.orbitalPeriodDays),
+    distanceAU: facts.distanceAU,
+  };
+}
+
 export function isKnownPlanet(id: string): id is PlanetName {
   return (PLANET_ORDER as readonly string[]).includes(id);
 }
@@ -121,6 +163,9 @@ export function getCenterGlyph(nodeId: string): string {
   if (isAsteroidId(nodeId)) return ASTEROID_GLYPH;
   if (nodeId === COMETS_HUB_ID) return COMETS_HUB_GLYPH;
   if (isCometId(nodeId)) return COMET_GLYPH;
+  if (nodeId === STARMAP_ID) return STARMAP_GLYPH;
+  if (isStarId(nodeId) && nodeId !== "sun") return STAR_FACTS[nodeId].glyph;
+  if (isExoplanetId(nodeId)) return EXOPLANET_GLYPH[EXOPLANET_FACTS[nodeId].kind];
   return LEAF_GLYPH;
 }
 
@@ -131,6 +176,9 @@ function getOwnerLabel(ownerId: string): string {
   if (isAsteroidId(ownerId)) return ASTEROID_FACTS[ownerId].label;
   if (ownerId === COMETS_HUB_ID) return COMETS_HUB_FACTS.label;
   if (isCometId(ownerId)) return COMET_FACTS[ownerId].label;
+  if (ownerId === STARMAP_ID) return STARMAP_FACTS.label;
+  if (isStarId(ownerId)) return ownerId === "sun" ? "Sun" : STAR_FACTS[ownerId].label;
+  if (isExoplanetId(ownerId)) return EXOPLANET_FACTS[ownerId].label;
   return ownerId;
 }
 
@@ -152,6 +200,9 @@ export function getNodeKind(nodeId: string): NodeKind {
   if (isAsteroidId(nodeId)) return "asteroid";
   if (nodeId === COMETS_HUB_ID) return "comets";
   if (isCometId(nodeId)) return "comet";
+  if (nodeId === STARMAP_ID) return "starmap";
+  if (isStarId(nodeId) && nodeId !== "sun") return "star";
+  if (isExoplanetId(nodeId)) return "exoplanet";
   const leaf = parseLeafId(nodeId);
   return leaf ? leaf.kind : "planet";
 }
@@ -164,6 +215,12 @@ export function getCenterLabel(nodeId: string): string {
   if (isAsteroidId(nodeId)) return `${BELT_FACTS.label} — ${ASTEROID_FACTS[nodeId].label}`;
   if (nodeId === COMETS_HUB_ID) return COMETS_HUB_FACTS.label;
   if (isCometId(nodeId)) return `${COMETS_HUB_FACTS.label} — ${COMET_FACTS[nodeId].label}`;
+  if (nodeId === STARMAP_ID) return STARMAP_FACTS.label;
+  if (isStarId(nodeId) && nodeId !== "sun") return `${STARMAP_FACTS.label} — ${STAR_FACTS[nodeId].label}`;
+  if (isExoplanetId(nodeId)) {
+    const facts = EXOPLANET_FACTS[nodeId];
+    return `${STAR_FACTS[facts.starId].label} — ${facts.label}`;
+  }
   const leaf = parseLeafId(nodeId);
   if (leaf) return `${getOwnerLabel(leaf.owner)} — ${getBreadcrumbLabel(nodeId)}`;
   return nodeId;
@@ -174,17 +231,20 @@ export function getBreadcrumbLabel(nodeId: string): string {
   if (isMoonId(nodeId)) return MOON_FACTS[nodeId].label;
   if (isAsteroidId(nodeId)) return ASTEROID_FACTS[nodeId].label;
   if (isCometId(nodeId)) return COMET_FACTS[nodeId].label;
+  if (isStarId(nodeId) && nodeId !== "sun") return STAR_FACTS[nodeId].label;
+  if (isExoplanetId(nodeId)) return EXOPLANET_FACTS[nodeId].label;
   const leaf = parseLeafId(nodeId);
   if (leaf) return LEAF_LABELS[leaf.kind];
   return getCenterLabel(nodeId);
 }
 
 function applicableLeafKinds(ownerId: string): LeafKind[] {
-  if (ownerId === BELT_ID || ownerId === COMETS_HUB_ID) return ["surface", "notes"];
+  if (ownerId === BELT_ID || ownerId === COMETS_HUB_ID || ownerId === STARMAP_ID) return ["surface", "notes"];
   if (isKnownPlanet(ownerId)) {
     return hasRings(ownerId) ? ["surface", "orbit-log", "rings", "notes"] : ["surface", "orbit-log", "notes"];
   }
-  // moons, asteroids, and comets
+  if (isStarId(ownerId) && ownerId !== "sun") return ["surface", "notes"];
+  // moons, asteroids, comets, and exoplanets
   return ["surface", "orbit-log", "notes"];
 }
 
@@ -208,6 +268,16 @@ export function getDistanceDomain(nodeId: string): DistanceDomain {
     return { min: 1, max: leafChildren(nodeId).length + getAsteroidsSortedByDistance().length };
   }
   if (nodeId === COMETS_HUB_ID) return COMET_DISPLAY_DOMAIN;
+  if (nodeId === STARMAP_ID) return STARMAP_DISPLAY_DOMAIN;
+  if (isStarId(nodeId) && nodeId !== "sun") {
+    const distances = getExoplanetsOfStar(nodeId).map((id) => EXOPLANET_FACTS[id].distanceAU);
+    if (distances.length === 0) return LEAF_DOMAIN;
+    const min = Math.min(...distances);
+    const max = Math.max(...distances);
+    // A single-planet system would otherwise give scaleDistance a
+    // zero-width domain (min === max), dividing by zero.
+    return min === max ? { min: min * 0.5, max: max * 1.5 } : { min, max };
+  }
   return LEAF_DOMAIN;
 }
 
@@ -283,7 +353,62 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
     return [...leaves, ...cometEntries];
   }
 
-  if (isMoonId(nodeId) || isAsteroidId(nodeId) || isCometId(nodeId)) return leafChildren(nodeId);
+  if (nodeId === STARMAP_ID) {
+    const leaves = leafChildren(nodeId);
+    const solEntry: OrbitEntry = {
+      id: "sun",
+      label: "Sun",
+      glyph: SUN_GLYPH,
+      angleDeg: 0,
+      distance: 0,
+    };
+    const starEntries: OrbitEntry[] = STAR_ORDER.map((starId) => {
+      const facts = STAR_FACTS[starId];
+      return {
+        id: starId,
+        label: facts.label,
+        glyph: facts.glyph,
+        angleDeg: facts.displayAngleDeg,
+        distance: facts.distanceLy,
+      };
+    });
+    return [...leaves, solEntry, ...starEntries];
+  }
+
+  if (isStarId(nodeId) && nodeId !== "sun") {
+    const leaves = leafChildren(nodeId);
+    const exoplanetEntries: OrbitEntry[] = getExoplanetsOfStar(nodeId).map((exoplanetId) => {
+      const facts = EXOPLANET_FACTS[exoplanetId];
+      const position = getExoplanetPosition(exoplanetId, date);
+      return {
+        id: exoplanetId,
+        label: facts.label,
+        glyph: EXOPLANET_GLYPH[facts.kind],
+        angleDeg: position.angleDeg,
+        distance: position.distanceAU,
+      };
+    });
+    return [...leaves, ...exoplanetEntries];
+  }
+
+  if (isMoonId(nodeId) || isAsteroidId(nodeId) || isCometId(nodeId) || isExoplanetId(nodeId)) return leafChildren(nodeId);
 
   return [];
+}
+
+/** Unit suffix for the bottom panel's focused-body distance readout. */
+export function getDistanceUnitLabel(nodeId: string): string {
+  if (nodeId === STARMAP_ID) return " ly";
+  if (nodeId === "sun" || (isStarId(nodeId) && nodeId !== "sun")) return " AU";
+  return "";
+}
+
+/**
+ * True when traveling between fromId and toId crosses the boundary
+ * between the star map and "inside a solar system" — i.e. one side is
+ * the star map and the other is a star (Sol included). This is the
+ * "diving through a star" transition; every other move stays instant.
+ */
+export function isStarBoundary(fromId: string, toId: string): boolean {
+  return (fromId === STARMAP_ID && isStarId(toId)) || (isStarId(fromId) && toId === STARMAP_ID);
 }

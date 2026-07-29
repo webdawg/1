@@ -7,8 +7,18 @@ import { RING_FACTS } from "../ringFacts.js";
 import { ASTEROID_FACTS, isAsteroidId, type AsteroidId } from "../asteroidFacts.js";
 import { BELT_FACTS, BELT_ID } from "../beltFacts.js";
 import { COMET_FACTS, COMETS_HUB_FACTS, COMETS_HUB_ID, getCometPosition, isCometId, type CometId } from "../cometFacts.js";
+import {
+  EXOPLANET_FACTS,
+  STAR_FACTS,
+  STARMAP_FACTS,
+  STARMAP_ID,
+  isExoplanetId,
+  isStarId,
+  type ExoplanetId,
+  type StarId,
+} from "../starFacts.js";
 import { toClockHour } from "../layout.js";
-import { getAsteroidPosition, getMoonPosition, isKnownPlanet, parseLeafId } from "../worldTree.js";
+import { getAsteroidPosition, getExoplanetPosition, getMoonPosition, isKnownPlanet, parseLeafId } from "../worldTree.js";
 
 interface Props {
   nodeId: string;
@@ -185,6 +195,57 @@ function CometOrbitLog({ comet, date }: { comet: CometId; date: Date }): React.J
   );
 }
 
+function StarmapSurface(): React.JSX.Element {
+  return (
+    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+      <Text italic>{STARMAP_FACTS.description}</Text>
+    </Box>
+  );
+}
+
+function StarSurface({ star }: { star: Exclude<StarId, "sun"> }): React.JSX.Element {
+  const facts = STAR_FACTS[star];
+  return (
+    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+      <Text italic>{facts.description}</Text>
+      <Text> </Text>
+      <Text>Distance from the Sun: {facts.distanceLy.toLocaleString()} ly</Text>
+      <Text>Spectral type: {facts.spectralType}</Text>
+    </Box>
+  );
+}
+
+function ExoplanetSurface({ exoplanet }: { exoplanet: ExoplanetId }): React.JSX.Element {
+  const facts = EXOPLANET_FACTS[exoplanet];
+  return (
+    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+      <Text italic>{facts.description}</Text>
+      <Text> </Text>
+      <Text>Orbiting: {STAR_FACTS[facts.starId].label}</Text>
+      <Text>Average distance from its star: {facts.distanceAU} AU</Text>
+      <Text>Orbital period: {formatDays(facts.orbitalPeriodDays)}</Text>
+      <Text>Discovered: {facts.discovered}</Text>
+      {facts.statusNote ? <Text dimColor>{facts.statusNote}</Text> : null}
+    </Box>
+  );
+}
+
+function ExoplanetOrbitLog({ exoplanet, date }: { exoplanet: ExoplanetId; date: Date }): React.JSX.Element {
+  const facts = EXOPLANET_FACTS[exoplanet];
+  const position = getExoplanetPosition(exoplanet, date);
+  return (
+    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+      <Text>
+        Distance from {STAR_FACTS[facts.starId].label} (assumed circular orbit): {position.distanceAU.toFixed(4)} AU
+      </Text>
+      <Text>
+        Position: {toClockHour(position.angleDeg)} o'clock ({position.angleDeg.toFixed(1)}°)
+      </Text>
+      <Text>Orbital period: {formatDays(facts.orbitalPeriodDays)}</Text>
+    </Box>
+  );
+}
+
 function Notes({ notes }: { notes: string[] }): React.JSX.Element {
   return (
     <Box flexDirection="column" borderStyle="round" paddingX={1}>
@@ -245,6 +306,22 @@ export default function ContentView({ nodeId, date, notes }: Props): React.JSX.E
       <CometSurface comet={leaf.owner} />
     ) : (
       <CometOrbitLog comet={leaf.owner} date={date} />
+    );
+  }
+
+  if (leaf.owner === STARMAP_ID) {
+    return leaf.kind === "surface" ? <StarmapSurface /> : <Text dimColor>Nothing here.</Text>;
+  }
+
+  if (isStarId(leaf.owner) && leaf.owner !== "sun") {
+    return leaf.kind === "surface" ? <StarSurface star={leaf.owner} /> : <Text dimColor>Nothing here.</Text>;
+  }
+
+  if (isExoplanetId(leaf.owner)) {
+    return leaf.kind === "surface" ? (
+      <ExoplanetSurface exoplanet={leaf.owner} />
+    ) : (
+      <ExoplanetOrbitLog exoplanet={leaf.owner} date={date} />
     );
   }
 

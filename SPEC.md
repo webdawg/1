@@ -9,23 +9,35 @@ file ever disagree, the code is authoritative until this file catches up.
 ## World model
 
 A single recursive rule: whatever node you're centered on, you see what
-orbits it. Node categories: `sun` → `planet` → `moon`; `sun` → `belt` →
-`asteroid`; `sun` → `comets` (hub) → `comet`; any of those → leaf nodes
-(`surface`, `orbit-log`, `rings` — only on ringed planets, `notes`).
-Leaves are generic detail screens, not physical bodies.
+orbits it. The root is the star map (`starmap`) → stars (Sol, id `"sun"`,
+plus ~16 real nearby stars) → for Sol: `planet` → `moon`; `sun` → `belt` →
+`asteroid`; `sun` → `comets` (hub) → `comet`; for every other star:
+`exoplanet`. Any of those → leaf nodes (`surface`, `orbit-log`, `rings` —
+only on ringed planets, `notes`). Leaves are generic detail screens, not
+physical bodies.
 
 Position math, by category:
 - **Planets** — real orbital elements + Kepler's equation (Newton's
   method), time-of-now based. `tui/src/orbital.ts`.
-- **Moons, asteroids** — circular mean-motion approximation (a per-body
-  phase offset + period), not full ephemeris. `getMoonPosition`/
-  `getAsteroidPosition` in `worldTree.ts`.
+- **Moons, asteroids, exoplanets** — circular mean-motion approximation (a
+  per-body phase offset + period), not full ephemeris. `getMoonPosition`/
+  `getAsteroidPosition`/`getExoplanetPosition` in `worldTree.ts`. Used for
+  exoplanets specifically because most confirmed exoplanets don't have
+  well-constrained full Keplerian elements the way our own planets do —
+  claiming otherwise would misrepresent the data.
 - **Comets** — full Kepler equation like planets, not the circular
   approximation, because their eccentricity is too extreme for that to
   look sane. `cometFacts.ts`'s `getCometPosition`.
-- **Belt, comets hub** — a single fixed representative point each, since
-  the real belt/comet population spans every angle at once and there's no
-  single "position" to compute.
+- **Belt, comets hub, star map** — a single fixed representative point
+  each: the real belt/comet population spans every angle at once, and the
+  star map has no orbit to compute at all (stars are just plotted by real
+  distance from the Sun, at a hand-assigned display angle).
+- **Stars** (other than Sol) — plotted at their real distance from the Sun
+  (light-years) and a hand-assigned angle, same "fixed representative
+  point" treatment as the belt — there's no orbital motion to model on
+  human timescales. `tui/src/starFacts.ts` is the curated data source (a
+  static snapshot, not a live feed — same pattern as every other
+  `*Facts.ts` file in this codebase).
 
 ## Layout
 
@@ -68,6 +80,9 @@ bracket-style signaling category before you even read the letter inside:
 | Individual asteroid | `{.}` | `{.}` |
 | Comets hub | `~^~` | `~^~` |
 | Individual comet | `~'~` | `~'~` |
+| Star map (center marker only) | `{*}` | `{*}` |
+| Star (other than Sol) | `*x*` | one distinct letter/digit per star, e.g. `*7*` TRAPPIST-1, `*1*` 51 Pegasi — see `starFacts.ts` |
+| Exoplanet | `(x)` rocky / `=x=` gas giant | `(e)` / `=g=` |
 | Leaf (Surface/Orbit Log/Rings/Notes) | `»` | shared `»` — menu-styled, not body-styled; the label disambiguates which leaf |
 
 `getCenterGlyph(nodeId)` in `worldTree.ts` returns the same glyph a body
@@ -116,6 +131,24 @@ angle-sorted list. `spatialNav.ts`'s `pickNextFocus`:
 Enter travels to the focused entry, pushing it onto the navigation path;
 children rebuild for the new center via `getOrbitChildren`, and focus
 resets to the new set's first entry.
+
+## Star travel transition
+
+Every Enter/Escape (and the `/back` command) is instant *except* one
+specific crossing: moving between the star map and a star (Sol included),
+in either direction — `worldTree.ts`'s `isStarBoundary(fromId, toId)`
+detects this. That move instead plays a ~1.2s "diving through the star"
+animation (`WarpTransition.tsx`: 6 frames of an expanding ring, reusing
+`layout.ts`'s `polarToGrid`, no new position math) before the path
+actually changes. While it plays: the top tile shows the animation
+instead of `SolarView`/`ContentView`, the bottom panel's breadcrumb/
+focused-info lines are replaced by a single `Diving through {label}...`
+status line, and `useInput` is gated off (`isActive: mode === "nav" &&
+!transition`) so no navigation input is processed mid-animation. The
+pending `{ nextPath, label, logLine }` is held in `App.tsx`'s `transition`
+state and only committed (`setPath`/`persist`/`pushLog`) when
+`WarpTransition` calls its `onComplete` callback — there's no independent
+timer to keep in sync with the animation's actual length.
 
 ## Session model
 

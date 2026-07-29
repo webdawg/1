@@ -19,12 +19,15 @@ verified (no test framework yet, so this matters more than usual).
 This repo actually contains two unrelated things:
 
 1. **`tui/`** — the real, active project. An Ink (React-for-terminals) app that
-   models the solar system as a recursive "center + orbiting things" tree you
-   navigate: Sun → planets → moons, Sun → asteroid belt → asteroids, Sun →
-   comets hub → comets. Planets use real Keplerian orbital mechanics; moons
-   and asteroids use a circular mean-motion approximation; comets solve the
-   full Kepler equation (their eccentricity is too extreme for the circular
-   approximation).
+   models the universe as a recursive "center + orbiting things" tree you
+   navigate: star map → Sol → planets → moons, Sol → asteroid belt →
+   asteroids, Sol → comets hub → comets; star map → any other real star →
+   its curated real exoplanets. Planets use real Keplerian orbital
+   mechanics; moons, asteroids, and exoplanets use a circular mean-motion
+   approximation; comets solve the full Kepler equation (their
+   eccentricity is too extreme for the circular approximation). Crossing
+   between the star map and a star (Sol included) plays a short "diving
+   through the star" animated transition instead of an instant jump.
 2. **`src/one/`, `tests/`, `pyproject.toml`** — a Python package skeleton
    from the initial repo scaffold. `src/one/__init__.py` and `tests/` are
    still empty and nothing has been built on top of them. Treat this as
@@ -47,9 +50,11 @@ way this file was; ask before rewriting it if you want it to match.
 - `src/orbital.ts` — real orbital elements + Kepler's equation solver
   (Newton's method) for the 8 planets.
 - `src/planetFacts.ts`, `moonFacts.ts`, `ringFacts.ts`, `asteroidFacts.ts`,
-  `beltFacts.ts`, `cometFacts.ts` — factual data per body category, each
-  exposing an id union type + a `Record<Id, Facts>` + an `isXId` guard,
-  following the same shape.
+  `beltFacts.ts`, `cometFacts.ts`, `starFacts.ts` — factual data per body
+  category, each exposing an id union type + a `Record<Id, Facts>` + an
+  `isXId` guard, following the same shape. `starFacts.ts` is a curated
+  static snapshot (~16 real stars, ~27 real exoplanets) — same pattern as
+  the rest, no network calls.
 - `src/components/SolarView.tsx` — renders the orbit-grid ASCII view: a
   full-width tile of nothing but icons+labels (no text list — that's the
   bottom panel's job). Generic over `OrbitEntry`/`DistanceDomain`; new body
@@ -76,7 +81,12 @@ way this file was; ask before rewriting it if you want it to match.
   `spatialNav` for direction decisions) and the shared `toClockHour`.
 - `src/session.ts` — local file-based session persistence. Its own comment
   says it's "a stand-in for the future multi-user server" — shape mirrors
-  what a real server would hand out (session id + resume key).
+  what a real server would hand out (session id + resume key). Default new
+  session path is `["starmap", "sun"]`.
+- `src/components/WarpTransition.tsx` — the "diving through a star"
+  animation played when travel crosses the star-map/star boundary
+  (`worldTree.ts`'s `isStarBoundary`). Self-contained frame loop, reuses
+  `layout.ts`'s `polarToGrid`, no new position math.
 
 Run it: `cd tui && npm install && npm start`
 Typecheck: `cd tui && npm run typecheck`
@@ -99,6 +109,17 @@ readout, the log, and the command prompt. Navigation is now spatial
 `spatialNav.ts`) instead of cycling a hidden angle-sorted list. See
 `DEVELOPMENT.md` for the Ink border-corruption pitfall hit and fixed
 during this rework (box padding vs. content-width math).
+
+Also added this session: a star map above Sol (`starFacts.ts` + wiring
+through `worldTree.ts`/`ContentView.tsx`) — travel from the Sun to ~16 real
+nearby star systems (Proxima Centauri, TRAPPIST-1, 51 Pegasi, PSR
+B1257+12, ...) and their real curated exoplanets, with a "diving through
+the star" animated transition (`WarpTransition.tsx`) on that specific
+boundary crossing only — every other move stays instant. Fixed a real
+icon-collision bug along the way: crowded clusters (e.g. inner rocky
+planets, or nearby stars on the map) used to silently drop an entry
+entirely on overlap; icons are now guaranteed a slot (nudged to the
+nearest free cell if needed) and only labels are ever omitted.
 
 Nothing in-progress/uncommitted right now — check `ROADMAP.md` Phase 2 for
 what's next (dwarf planets, bots/NPCs, BBS-style messages, tests).
