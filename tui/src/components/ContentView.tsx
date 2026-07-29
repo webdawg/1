@@ -4,7 +4,9 @@ import { getPlanetPosition, type PlanetName } from "../orbital.js";
 import { PLANET_FACTS } from "../planetFacts.js";
 import { getMoonsOf, isMoonId, MOON_FACTS, type MoonId } from "../moonFacts.js";
 import { RING_FACTS } from "../ringFacts.js";
-import { getMoonPosition, isKnownPlanet, parseLeafId } from "../worldTree.js";
+import { ASTEROID_FACTS, isAsteroidId, type AsteroidId } from "../asteroidFacts.js";
+import { BELT_FACTS, BELT_ID } from "../beltFacts.js";
+import { getAsteroidPosition, getMoonPosition, isKnownPlanet, parseLeafId } from "../worldTree.js";
 
 interface Props {
   nodeId: string;
@@ -99,6 +101,48 @@ function MoonOrbitLog({ moon, date }: { moon: MoonId; date: Date }): React.JSX.E
   );
 }
 
+function BeltSurface(): React.JSX.Element {
+  return (
+    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+      <Text italic>{BELT_FACTS.description}</Text>
+      <Text> </Text>
+      <Text>Composition: {BELT_FACTS.composition}</Text>
+      <Text>
+        Span: {BELT_FACTS.innerAU} AU – {BELT_FACTS.outerAU} AU from the Sun
+      </Text>
+      <Text>{BELT_FACTS.countNote}</Text>
+      <Text>{BELT_FACTS.massNote}</Text>
+    </Box>
+  );
+}
+
+function AsteroidSurface({ asteroid }: { asteroid: AsteroidId }): React.JSX.Element {
+  const facts = ASTEROID_FACTS[asteroid];
+  return (
+    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+      <Text italic>{facts.description}</Text>
+      <Text> </Text>
+      <Text>Diameter: {facts.diameterKm.toLocaleString()} km</Text>
+      <Text>Average distance from Sun: {facts.distanceAU} AU</Text>
+      <Text>Orbital period: {formatDays(facts.orbitalPeriodYears * 365.25)}</Text>
+    </Box>
+  );
+}
+
+function AsteroidOrbitLog({ asteroid, date }: { asteroid: AsteroidId; date: Date }): React.JSX.Element {
+  const facts = ASTEROID_FACTS[asteroid];
+  const position = getAsteroidPosition(asteroid, date);
+  return (
+    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+      <Text>Distance from Sun (assumed circular orbit): {position.distanceAU.toFixed(2)} AU</Text>
+      <Text>
+        Position: {toClockHour(position.angleDeg)} o'clock ({position.angleDeg.toFixed(1)}°)
+      </Text>
+      <Text>Orbital period: {formatDays(facts.orbitalPeriodYears * 365.25)}</Text>
+    </Box>
+  );
+}
+
 function Notes({ notes }: { notes: string[] }): React.JSX.Element {
   return (
     <Box flexDirection="column" borderStyle="round" paddingX={1}>
@@ -130,12 +174,25 @@ export default function ContentView({ nodeId, date, notes }: Props): React.JSX.E
     }
   }
 
-  if (!isMoonId(leaf.owner)) {
-    return <Text dimColor>Nothing here.</Text>;
+  if (leaf.owner === BELT_ID) {
+    return leaf.kind === "surface" ? <BeltSurface /> : <Text dimColor>Nothing here.</Text>;
   }
-  return leaf.kind === "surface" ? (
-    <MoonSurface moon={leaf.owner} />
-  ) : (
-    <MoonOrbitLog moon={leaf.owner} date={date} />
-  );
+
+  if (isMoonId(leaf.owner)) {
+    return leaf.kind === "surface" ? (
+      <MoonSurface moon={leaf.owner} />
+    ) : (
+      <MoonOrbitLog moon={leaf.owner} date={date} />
+    );
+  }
+
+  if (isAsteroidId(leaf.owner)) {
+    return leaf.kind === "surface" ? (
+      <AsteroidSurface asteroid={leaf.owner} />
+    ) : (
+      <AsteroidOrbitLog asteroid={leaf.owner} date={date} />
+    );
+  }
+
+  return <Text dimColor>Nothing here.</Text>;
 }
