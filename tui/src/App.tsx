@@ -1,13 +1,30 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Box, Text, useApp, useInput } from "ink";
+import { Box, Text, useApp, useInput, useWindowSize } from "ink";
 import SolarView from "./components/SolarView.js";
 import ContentView from "./components/ContentView.js";
 import Prompt from "./components/Prompt.js";
-import { getBreadcrumbLabel, getCenterLabel, getDistanceDomain, getNodeKind, getOrbitChildren } from "./worldTree.js";
+import { computeGridPositions, toClockHour } from "./layout.js";
+import { pickNextFocus } from "./spatialNav.js";
+import {
+  getBreadcrumbLabel,
+  getCenterGlyph,
+  getCenterLabel,
+  getDistanceDomain,
+  getNodeKind,
+  getOrbitChildren,
+} from "./worldTree.js";
 import { saveSession, type SessionData } from "./session.js";
 
 const TICK_MS = 5000;
 const MAX_LOG_LINES = 4;
+
+// Bottom panel content budget, fixed regardless of what's actually in the
+// log this frame (log rows are always padded to MAX_LOG_LINES) — this is
+// what makes the top/bottom split arithmetic below deterministic.
+const BOTTOM_PANEL_HEIGHT = 2 /* border */ + 1 /* breadcrumb */ + 1 /* focused-body info */ + MAX_LOG_LINES + 3 /* Prompt's own border+row */;
+const MIN_GRID_WIDTH = 20;
+const MIN_GRID_HEIGHT = 5;
+const MIN_TOP_HEIGHT = MIN_GRID_HEIGHT + 2;
 
 interface Props {
   session: SessionData;
@@ -17,9 +34,10 @@ interface Props {
 export default function App({ session, isNewSession }: Props): React.JSX.Element {
   const { exit } = useApp();
   const sessionRef = useRef<SessionData>(session);
+  const { columns, rows } = useWindowSize();
 
   const [path, setPath] = useState<string[]>(session.path);
-  const [focusIndex, setFocusIndex] = useState(0);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const [mode, setMode] = useState<"nav" | "command">("nav");
   const [promptValue, setPromptValue] = useState("");
   const [log, setLog] = useState<string[]>(
@@ -30,7 +48,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         ]
       : [`Welcome back. Resumed session ${session.sessionId}.`]
   );
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), TICK_MS);
@@ -46,33 +64,59 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
     void saveSession(sessionRef.current);
   }
 
+  const now = useMemo(() => new Date(), [tick]);
   const centerId = path[path.length - 1];
   const centerLabel = getCenterLabel(centerId);
   const centerKind = getNodeKind(centerId);
   const isLeaf = centerKind === "surface" || centerKind === "orbit-log" || centerKind === "rings" || centerKind === "notes";
   const domain = useMemo(() => getDistanceDomain(centerId), [centerId]);
   const children = useMemo(
-    () => [...getOrbitChildren(centerId, new Date())].sort((a, b) => a.angleDeg - b.angleDeg),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [centerId, path.length]
+    () => [...getOrbitChildren(centerId, now)].sort((a, b) => a.angleDeg - b.angleDeg),
+    [centerId, now]
   );
-  const focused = children.length > 0 ? children[focusIndex % children.length] : null;
+
+  useEffect(() => {
+    setFocusedId((prev) => (prev && children.some((c) => c.id === prev) ? prev : (children[0]?.id ?? null)));
+  }, [children]);
+
+  const focused = children.find((c) => c.id === focusedId) ?? null;
+
+  const cols = columns || 80;
+  const rowsSafe = rows || 24;
+  const topHeight = Math.max(MIN_TOP_HEIGHT, rowsSafe - BOTTOM_PANEL_HEIGHT);
+  // SolarView's box consumes 2 cols for its border plus 2 more for its
+  // paddingX={1} — rows wider than that overflow the box and corrupt its
+  // bottom border in this version of Ink, so this must stay in sync with
+  // SolarView's own border/padding.
+  const gridWidth = Math.max(MIN_GRID_WIDTH, cols - 4);
+  const gridHeight = Math.max(MIN_GRID_HEIGHT, topHeight - 2);
+  const positions = useMemo(
+    () => computeGridPositions(children, domain, gridWidth, gridHeight),
+    [children, domain, gridWidth, gridHeight]
+  );
 
   useInput(
     (input, key) => {
-      if (key.leftArrow || key.upArrow) {
-        setFocusIndex((i) => (children.length === 0 ? 0 : (i - 1 + children.length) % children.length));
+      if (key.leftArrow) {
+        setFocusedId((id) => pickNextFocus(children, positions, id, "left"));
         return;
       }
-      if (key.rightArrow || key.downArrow) {
-        setFocusIndex((i) => (children.length === 0 ? 0 : (i + 1) % children.length));
+      if (key.rightArrow) {
+        setFocusedId((id) => pickNextFocus(children, positions, id, "right"));
+        return;
+      }
+      if (key.upArrow) {
+        setFocusedId((id) => pickNextFocus(children, positions, id, "up"));
+        return;
+      }
+      if (key.downArrow) {
+        setFocusedId((id) => pickNextFocus(children, positions, id, "down"));
         return;
       }
       if (key.return) {
         if (focused) {
           const nextPath = [...path, focused.id];
           setPath(nextPath);
-          setFocusIndex(0);
           persist(nextPath);
           pushLog(`Traveled to ${focused.label}.`);
         }
@@ -82,7 +126,6 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         if (path.length > 1) {
           const nextPath = path.slice(0, -1);
           setPath(nextPath);
-          setFocusIndex(0);
           persist(nextPath);
           pushLog(`Back to ${getCenterLabel(nextPath[nextPath.length - 1])}.`);
         }
@@ -125,7 +168,6 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         if (path.length > 1) {
           const nextPath = path.slice(0, -1);
           setPath(nextPath);
-          setFocusIndex(0);
           persist(nextPath);
           pushLog(`Back to ${getCenterLabel(nextPath[nextPath.length - 1])}.`);
         } else {
@@ -163,24 +205,38 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   }
 
   return (
-    <Box flexDirection="column">
-      <Text>
-        Centered on <Text bold>{centerLabel}</Text>
-        {path.length > 1 ? `  (${path.map(getBreadcrumbLabel).join(" > ")})` : ""}
-      </Text>
-      {isLeaf ? (
-        <ContentView nodeId={centerId} date={new Date()} notes={sessionRef.current.notes[centerId] ?? []} />
-      ) : (
-        <SolarView centerLabel={centerLabel} orbitEntries={children} domain={domain} focusedId={focused?.id ?? null} />
-      )}
-      <Box flexDirection="column" marginTop={1}>
-        {log.map((line, idx) => (
+    <Box flexDirection="column" width={cols} height={rowsSafe}>
+      <Box flexDirection="column" height={topHeight} width={cols}>
+        {isLeaf ? (
+          <ContentView nodeId={centerId} date={now} notes={sessionRef.current.notes[centerId] ?? []} />
+        ) : (
+          <SolarView
+            centerGlyph={getCenterGlyph(centerId)}
+            orbitEntries={children}
+            domain={domain}
+            focusedId={focusedId}
+            gridWidth={gridWidth}
+            gridHeight={gridHeight}
+          />
+        )}
+      </Box>
+      <Box flexDirection="column" borderStyle="round" paddingX={1} height={BOTTOM_PANEL_HEIGHT} width={cols} overflow="hidden">
+        <Text>
+          Centered on <Text bold>{centerLabel}</Text>
+          {path.length > 1 ? `  (${path.map(getBreadcrumbLabel).join(" > ")})` : ""}
+        </Text>
+        <Text dimColor={!focused}>
+          {focused
+            ? `${focused.label} — ${toClockHour(focused.angleDeg)} o'clock, ${focused.distance.toFixed(2)}${centerId === "sun" ? " AU" : ""}`
+            : "No orbiting bodies here."}
+        </Text>
+        {Array.from({ length: MAX_LOG_LINES }).map((_, idx) => (
           <Text key={idx} dimColor>
-            {line}
+            {log[log.length - MAX_LOG_LINES + idx] ?? ""}
           </Text>
         ))}
+        <Prompt active={mode === "command"} value={promptValue} onChange={handlePromptChange} onSubmit={runCommand} />
       </Box>
-      <Prompt active={mode === "command"} value={promptValue} onChange={handlePromptChange} onSubmit={runCommand} />
     </Box>
   );
 }

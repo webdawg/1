@@ -1,14 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { polarToGrid, scaleDistance } from "../layout.js";
+import { computeGridPositions } from "../layout.js";
 import type { OrbitEntry, DistanceDomain } from "../worldTree.js";
-
-const GRID_WIDTH = 61;
-const GRID_HEIGHT = 21;
-const CENTER_X = Math.floor(GRID_WIDTH / 2);
-const CENTER_Y = Math.floor(GRID_HEIGHT / 2);
-const MIN_RADIUS = 2;
-const MAX_RADIUS = 9;
 
 interface Cell {
   char: string;
@@ -17,33 +10,73 @@ interface Cell {
 }
 
 interface Props {
-  centerLabel: string;
+  centerGlyph: string;
   orbitEntries: OrbitEntry[];
   domain: DistanceDomain;
   focusedId: string | null;
+  gridWidth: number;
+  gridHeight: number;
 }
 
-/** Converts an ecliptic-style angle into a 1-12 clock position, 12 at top. */
-function toClockHour(angleDeg: number): number {
-  const raw = ((90 - angleDeg + 360) % 360) / 30;
-  const hour = Math.round(raw) % 12;
-  return hour === 0 ? 12 : hour;
+type OccupiedRanges = Map<number, Array<[start: number, end: number]>>;
+
+/**
+ * Writes a whole string across one row's columns, clipping at the right
+ * edge and dropping the entire stamp (not partially) if it collides with
+ * something already claimed on that row. First-claim-wins: callers stamp
+ * in priority order (center, then focused entry, then the rest) so the
+ * most important thing on screen is never the one that silently vanishes.
+ */
+function stampRow(
+  grid: Cell[][],
+  occupied: OccupiedRanges,
+  row: number,
+  startCol: number,
+  text: string,
+  color: string | undefined,
+  bold: boolean,
+  gridWidth: number
+): void {
+  if (row < 0 || row >= grid.length || startCol >= gridWidth) return;
+  const clippedStart = Math.max(0, startCol);
+  const endCol = Math.min(gridWidth, startCol + text.length);
+  if (endCol <= clippedStart) return;
+
+  const ranges = occupied.get(row) ?? [];
+  if (ranges.some(([s, e]) => clippedStart < e && endCol > s)) return;
+
+  for (let col = clippedStart; col < endCol; col++) {
+    grid[row][col] = { char: text[col - startCol], color, bold };
+  }
+  ranges.push([clippedStart, endCol]);
+  occupied.set(row, ranges);
 }
 
-function buildGrid(centerLabel: string, entries: OrbitEntry[], domain: DistanceDomain, focusedId: string | null): Cell[][] {
-  const grid: Cell[][] = Array.from({ length: GRID_HEIGHT }, () =>
-    Array.from({ length: GRID_WIDTH }, () => ({ char: " " }))
+function buildGrid(
+  centerGlyph: string,
+  entries: OrbitEntry[],
+  domain: DistanceDomain,
+  focusedId: string | null,
+  gridWidth: number,
+  gridHeight: number
+): Cell[][] {
+  const grid: Cell[][] = Array.from({ length: gridHeight }, () =>
+    Array.from({ length: gridWidth }, () => ({ char: " " }))
   );
+  const occupied: OccupiedRanges = new Map();
 
-  const centerGlyph = centerLabel === "Sun" ? "*" : "@";
-  grid[CENTER_Y][CENTER_X] = { char: centerGlyph, color: "yellow", bold: true };
+  const centerX = Math.floor(gridWidth / 2);
+  const centerY = Math.floor(gridHeight / 2);
+  stampRow(grid, occupied, centerY, centerX - Math.floor(centerGlyph.length / 2), centerGlyph, "yellow", true, gridWidth);
 
-  for (const entry of entries) {
-    const radius = scaleDistance(entry.distance, domain.min, domain.max, MIN_RADIUS, MAX_RADIUS);
-    const { x, y } = polarToGrid(CENTER_X, CENTER_Y, entry.angleDeg, radius);
-    if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) continue;
+  const positions = computeGridPositions(entries, domain, gridWidth, gridHeight);
+  const stampOrder = [...entries].sort((a, b) => (a.id === focusedId ? 0 : 1) - (b.id === focusedId ? 0 : 1));
+
+  for (const entry of stampOrder) {
+    const pos = positions.get(entry.id);
+    if (!pos || pos.x < 0 || pos.x >= gridWidth || pos.y < 0 || pos.y >= gridHeight) continue;
     const isFocused = entry.id === focusedId;
-    grid[y][x] = { char: entry.glyph, color: isFocused ? "green" : "cyan", bold: isFocused };
+    stampRow(grid, occupied, pos.y, pos.x, `${entry.glyph} ${entry.label}`, isFocused ? "green" : "cyan", isFocused, gridWidth);
   }
 
   return grid;
@@ -70,29 +103,14 @@ function GridRow({ row }: { row: Cell[] }): React.JSX.Element {
   );
 }
 
-function SolarView({ centerLabel, orbitEntries, domain, focusedId }: Props): React.JSX.Element {
-  const grid = buildGrid(centerLabel, orbitEntries, domain, focusedId);
+function SolarView({ centerGlyph, orbitEntries, domain, focusedId, gridWidth, gridHeight }: Props): React.JSX.Element {
+  const grid = buildGrid(centerGlyph, orbitEntries, domain, focusedId, gridWidth, gridHeight);
 
   return (
-    <Box flexDirection="column">
-      <Box flexDirection="column" borderStyle="round" paddingX={1}>
-        {grid.map((row, idx) => (
-          <GridRow key={idx} row={row} />
-        ))}
-      </Box>
-      <Box flexDirection="column" marginTop={1}>
-        {orbitEntries.map((entry) => {
-          const focused = entry.id === focusedId;
-          const hour = toClockHour(entry.angleDeg);
-          const distanceLabel = `${entry.distance.toFixed(2)}${centerLabel === "Sun" ? " AU" : ""}`;
-          return (
-            <Text key={entry.id} color={focused ? "green" : undefined} bold={focused}>
-              {focused ? "> " : "  "}
-              {entry.label} — {hour} o'clock, {distanceLabel}
-            </Text>
-          );
-        })}
-      </Box>
+    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+      {grid.map((row, idx) => (
+        <GridRow key={idx} row={row} />
+      ))}
     </Box>
   );
 }

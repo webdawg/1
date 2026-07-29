@@ -98,6 +98,41 @@ Two ways changes have actually been verified so far:
    ```
    Key names: `Up`/`Down`/`Left`/`Right`/`Enter`/`Escape`.
 
+## Known Ink gotchas
+
+Found and confirmed via minimal standalone reproductions (isolated from
+this app's code) while building the two-tile layout — worth knowing before
+touching box sizing in `SolarView.tsx`/`App.tsx` again:
+
+- **A `Box` with `borderStyle` + explicit `height`, containing a `Text`
+  row whose rendered content is wider than the box's actual inner content
+  area (box width minus border minus `paddingX`), silently corrupts the
+  box's bottom border** — it doesn't clip, wrap, warn, or throw; it
+  replaces N characters of the border line with blank spaces, where N is
+  exactly the overflow amount. Confirmed with a repro as small as a 20x3
+  box with one `Text` line 2 characters too wide. This is why
+  `gridWidth` in `App.tsx` subtracts 4 (2 border + 2 `paddingX`), not 2 —
+  get that wrong and every row in `SolarView` overflows by the padding
+  amount, corrupting the border on every render. If this resurfaces
+  (new padding, new border style, a wrapping box added around `SolarView`),
+  re-derive the actual inner content width from every box the content
+  passes through, not just the outermost border.
+- **Ad-hoc test scripts for this must live inside `tui/`** (e.g.
+  `tui/scratch-repro.tsx`, delete when done) — running `npx tsx` on a file
+  outside `tui/` fails with `Cannot find module 'react'` since Node
+  resolves bare imports from the script's own directory upward, and
+  `/tmp` has no `node_modules` in its ancestry.
+- **A crashing script under `tmux new-session -d "command"` kills the
+  whole tmux server**, not just that pane, if it was the only session —
+  tmux exits when no sessions remain by default. If a `tmux
+  new-session`/`capture-pane` call suddenly reports "no server running,"
+  suspect the launched command crashed instantly rather than a tmux
+  problem; run it directly with `timeout 3 <command>` (or pipe to `head`)
+  first to see the real error before re-wrapping it in tmux. This is also
+  a faster iteration loop than tmux for pure-rendering repros that don't
+  need real keyboard input — plain piped output already reflects Ink's
+  actual box-drawing output.
+
 ## CI
 
 `.github/workflows/typecheck.yml` runs `npm run typecheck` on every push

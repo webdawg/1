@@ -45,16 +45,27 @@ export interface AsteroidPosition {
   distanceAU: number;
 }
 
+// Bracket style signals category before you even read the letter inside:
+// (x) terrestrial planet, =x= ringed gas/ice giant, .m. moon, {x} belt
+// body, ~x~ comet-family body, » menu-style leaf (not a physical body).
 const PLANET_META: Record<PlanetName, { label: string; glyph: string }> = {
-  mercury: { label: "Mercury", glyph: "•" },
-  venus: { label: "Venus", glyph: "o" },
-  earth: { label: "Earth", glyph: "O" },
-  mars: { label: "Mars", glyph: "o" },
-  jupiter: { label: "Jupiter", glyph: "@" },
-  saturn: { label: "Saturn", glyph: "Ѻ" },
-  uranus: { label: "Uranus", glyph: "0" },
-  neptune: { label: "Neptune", glyph: "0" },
+  mercury: { label: "Mercury", glyph: "(.)" },
+  venus: { label: "Venus", glyph: "(v)" },
+  earth: { label: "Earth", glyph: "(O)" },
+  mars: { label: "Mars", glyph: "(r)" },
+  jupiter: { label: "Jupiter", glyph: "=J=" },
+  saturn: { label: "Saturn", glyph: "=S=" },
+  uranus: { label: "Uranus", glyph: "=U=" },
+  neptune: { label: "Neptune", glyph: "=N=" },
 };
+
+const SUN_GLYPH = "(*)";
+const MOON_GLYPH = ".m.";
+const BELT_GLYPH = "{:}";
+const ASTEROID_GLYPH = "{.}";
+const COMETS_HUB_GLYPH = "~^~";
+const COMET_GLYPH = "~'~";
+const LEAF_GLYPH = "»";
 
 const SUN_AU_DOMAIN: DistanceDomain = { min: 0.38, max: 30.1 };
 const LEAF_DOMAIN: DistanceDomain = { min: 1, max: 3 };
@@ -100,6 +111,17 @@ export function getAsteroidPosition(asteroidId: AsteroidId, date: Date): Asteroi
 
 export function isKnownPlanet(id: string): id is PlanetName {
   return (PLANET_ORDER as readonly string[]).includes(id);
+}
+
+export function getCenterGlyph(nodeId: string): string {
+  if (nodeId === "sun") return SUN_GLYPH;
+  if (isKnownPlanet(nodeId)) return PLANET_META[nodeId].glyph;
+  if (isMoonId(nodeId)) return MOON_GLYPH;
+  if (nodeId === BELT_ID) return BELT_GLYPH;
+  if (isAsteroidId(nodeId)) return ASTEROID_GLYPH;
+  if (nodeId === COMETS_HUB_ID) return COMETS_HUB_GLYPH;
+  if (isCometId(nodeId)) return COMET_GLYPH;
+  return LEAF_GLYPH;
 }
 
 function getOwnerLabel(ownerId: string): string {
@@ -171,7 +193,7 @@ function leafChildren(ownerId: string): OrbitEntry[] {
   return kinds.map((kind, index) => ({
     id: `${ownerId}:${kind}`,
     label: LEAF_LABELS[kind],
-    glyph: "·",
+    glyph: LEAF_GLYPH,
     angleDeg: (360 / kinds.length) * index,
     distance: index + 1,
   }));
@@ -201,14 +223,14 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
     const beltEntry: OrbitEntry = {
       id: BELT_ID,
       label: BELT_FACTS.label,
-      glyph: ":",
+      glyph: BELT_GLYPH,
       angleDeg: BELT_FACTS.displayAngleDeg,
       distance: BELT_FACTS.displayDistanceAU,
     };
     const cometsHubEntry: OrbitEntry = {
       id: COMETS_HUB_ID,
       label: COMETS_HUB_FACTS.label,
-      glyph: "^",
+      glyph: COMETS_HUB_GLYPH,
       angleDeg: COMETS_HUB_FACTS.displayAngleDeg,
       distance: COMETS_HUB_FACTS.displayDistanceAU,
     };
@@ -222,7 +244,7 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
       return {
         id: moonId,
         label: facts.label,
-        glyph: "o",
+        glyph: MOON_GLYPH,
         angleDeg: meanMotionAngle(moonId, date, facts.orbitalPeriodDays),
         distance: leaves.length + 1 + index,
       };
@@ -237,7 +259,7 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
       return {
         id: asteroidId,
         label: facts.label,
-        glyph: ".",
+        glyph: ASTEROID_GLYPH,
         angleDeg: meanMotionAngle(asteroidId, date, facts.orbitalPeriodYears * 365.25),
         distance: leaves.length + 1 + index,
       };
@@ -253,7 +275,7 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
       return {
         id: cometId,
         label: facts.label,
-        glyph: "'",
+        glyph: COMET_GLYPH,
         angleDeg: position.angleDeg,
         distance: position.distanceAU,
       };

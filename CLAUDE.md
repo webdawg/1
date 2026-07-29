@@ -47,14 +47,30 @@ way this file was; ask before rewriting it if you want it to match.
   `beltFacts.ts`, `cometFacts.ts` — factual data per body category, each
   exposing an id union type + a `Record<Id, Facts>` + an `isXId` guard,
   following the same shape.
-- `src/components/SolarView.tsx` — renders the orbit-grid ASCII view.
-  Generic over `OrbitEntry`/`DistanceDomain`; new body categories need no
-  changes here.
+- `src/components/SolarView.tsx` — renders the orbit-grid ASCII view: a
+  full-width tile of nothing but icons+labels (no text list — that's the
+  bottom panel's job). Generic over `OrbitEntry`/`DistanceDomain`; new body
+  categories need no changes here, just a `glyph` in `worldTree.ts`. Takes
+  `gridWidth`/`gridHeight` as props (sized dynamically by `App.tsx` from
+  the real terminal size) — **its box has `paddingX={1}` and a border, so
+  `gridWidth` must already have 4 columns subtracted for those (2 border +
+  2 padding), not just the border's 2. Getting this wrong doesn't error or
+  warn — it silently corrupts the box's bottom border in this Ink version
+  when a row's text overflows the actual content width.** See
+  `DEVELOPMENT.md` for how this was diagnosed if it resurfaces.
+- `src/spatialNav.ts` — `pickNextFocus`: given the currently-focused entry's
+  plotted grid position and an arrow-key direction, picks whichever *other*
+  entry is actually positioned that direction on screen (nearest-neighbor
+  scoring, angle-order wraparound if nothing lies that direction). This is
+  what makes navigation spatial instead of a hidden sorted-list cycle.
 - `src/components/ContentView.tsx` — renders leaf detail screens (Surface /
   Orbit Log / Rings / Notes). Switches on `leaf.owner`'s type, so each new
   body category needs its own `<X>Surface>` / `<X>OrbitLog>` components and a
   branch added to the switch at the bottom.
-- `src/layout.ts` — polar-to-grid math, distance scaling.
+- `src/layout.ts` — polar-to-grid math, distance scaling, plus
+  `computeGridPositions` (single source of truth for where each entry
+  lands on the grid — used by both `SolarView` for rendering and
+  `spatialNav` for direction decisions) and the shared `toClockHour`.
 - `src/session.ts` — local file-based session persistence. Its own comment
   says it's "a stand-in for the future multi-user server" — shape mirrors
   what a real server would hand out (session id + resume key).
@@ -65,12 +81,24 @@ No test framework is configured for the TUI yet.
 
 ## Current status (2026-07-29)
 
-Committed and working: navigation engine, planets with real orbital
-mechanics, major moons, gas/ice giant rings, the asteroid belt and its
-largest asteroids, and comets (Halley, Encke, Hale-Bopp, Hyakutake) as a
-fourth Sun-child category with full Kepler-orbit positions. Nothing
-in-progress/uncommitted right now — check `ROADMAP.md` Phase 2 for what's
-next (dwarf planets, bots/NPCs, BBS-style messages, tests).
+Committed and working: planets with real orbital mechanics, major moons,
+gas/ice giant rings, the asteroid belt and its largest asteroids, and
+comets (Halley, Encke, Hale-Bopp, Hyakutake) as a fourth Sun-child
+category with full Kepler-orbit positions.
+
+Layout was reworked this session from a small fixed-size grid + text list
+into two full-width tiles: a top tile that dynamically fills the real
+terminal (via Ink's `useWindowSize`) showing nothing but multi-character
+icon+label pairs for every orbiting body, and a fixed-height bottom panel
+holding the breadcrumb, the currently-focused body's o'clock/distance
+readout, the log, and the command prompt. Navigation is now spatial
+(arrow keys jump to whatever's actually up/down/left/right on screen via
+`spatialNav.ts`) instead of cycling a hidden angle-sorted list. See
+`DEVELOPMENT.md` for the Ink border-corruption pitfall hit and fixed
+during this rework (box padding vs. content-width math).
+
+Nothing in-progress/uncommitted right now — check `ROADMAP.md` Phase 2 for
+what's next (dwarf planets, bots/NPCs, BBS-style messages, tests).
 
 ## Long-term roadmap
 

@@ -7,6 +7,7 @@ import { RING_FACTS } from "../ringFacts.js";
 import { ASTEROID_FACTS, isAsteroidId, type AsteroidId } from "../asteroidFacts.js";
 import { BELT_FACTS, BELT_ID } from "../beltFacts.js";
 import { COMET_FACTS, COMETS_HUB_FACTS, COMETS_HUB_ID, getCometPosition, isCometId, type CometId } from "../cometFacts.js";
+import { toClockHour } from "../layout.js";
 import { getAsteroidPosition, getMoonPosition, isKnownPlanet, parseLeafId } from "../worldTree.js";
 
 interface Props {
@@ -18,12 +19,6 @@ interface Props {
 function formatDays(days: number): string {
   if (days < 500) return `${days.toFixed(days < 10 ? 2 : 1)} days`;
   return `${(days / 365.25).toFixed(1)} years`;
-}
-
-function toClockHour(angleDeg: number): number {
-  const raw = ((90 - angleDeg + 360) % 360) / 30;
-  const hour = Math.round(raw) % 12;
-  return hour === 0 ? 12 : hour;
 }
 
 function PlanetSurface({ planet }: { planet: PlanetName }): React.JSX.Element {

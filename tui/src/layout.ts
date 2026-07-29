@@ -40,3 +40,42 @@ export function scaleDistance(
   const clamped = Math.max(0, Math.min(1, t));
   return minRadius + clamped * (maxRadius - minRadius);
 }
+
+interface PositionedEntry {
+  id: string;
+  angleDeg: number;
+  distance: number;
+}
+
+/**
+ * Single source of truth for "where does each orbit entry land on the
+ * character grid" — used both for rendering (SolarView) and for deciding
+ * what's spatially up/down/left/right of the current selection
+ * (spatialNav). Radius bounds derive from the grid's actual dimensions
+ * rather than fixed constants, since the grid is sized to the terminal.
+ */
+export function computeGridPositions(
+  entries: PositionedEntry[],
+  domain: { min: number; max: number },
+  gridWidth: number,
+  gridHeight: number
+): Map<string, GridPoint> {
+  const centerX = Math.floor(gridWidth / 2);
+  const centerY = Math.floor(gridHeight / 2);
+  const minRadius = 2;
+  const maxRadius = Math.max(minRadius, Math.floor(Math.min(gridHeight, gridWidth / ASPECT_RATIO) / 2) - 1);
+
+  const positions = new Map<string, GridPoint>();
+  for (const entry of entries) {
+    const radius = scaleDistance(entry.distance, domain.min, domain.max, minRadius, maxRadius);
+    positions.set(entry.id, polarToGrid(centerX, centerY, entry.angleDeg, radius));
+  }
+  return positions;
+}
+
+/** Converts an ecliptic-style angle into a 1-12 clock position, 12 at top. */
+export function toClockHour(angleDeg: number): number {
+  const raw = ((90 - angleDeg + 360) % 360) / 30;
+  const hour = Math.round(raw) % 12;
+  return hour === 0 ? 12 : hour;
+}
