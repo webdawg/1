@@ -50,10 +50,13 @@ Two full-width tiles, stacked vertically:
   leaf node.
 - **Bottom tile — everything else.** Fixed height (11 rows), full width,
   bordered box containing, in order: the breadcrumb (`Centered on X (Sun
-  > ... > X)`), one line of the currently-focused body's quick info
-  (`label — N o'clock, distance`), the log (always exactly `MAX_LOG_LINES`
-  rows, blank-padded so the panel's height never varies with content),
-  and the command prompt.
+  > ... > X)`), one line of the currently-focused entry's quick info
+  (`CATEGORY - label — N o'clock, distance` — the all-caps category
+  prefix is `worldTree.ts`'s `getCategoryLabel`, e.g. `PLANET - Earth`,
+  `STAR - TRAPPIST-1`, `EXOPLANET - TRAPPIST-1 b`; updates live as focus
+  moves, unlike the breadcrumb which only changes on travel), the log
+  (always exactly `MAX_LOG_LINES` rows, blank-padded so the panel's
+  height never varies with content), and the command prompt.
 
 Position math for the top tile lives in one place — `layout.ts`'s
 `computeGridPositions` — used both by `SolarView` for rendering and by

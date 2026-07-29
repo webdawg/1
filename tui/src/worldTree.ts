@@ -426,6 +426,35 @@ export function getDistanceUnitLabel(nodeId: string): string {
   return "";
 }
 
+const CATEGORY_LABELS: Record<NodeKind, string> = {
+  sun: "STAR",
+  planet: "PLANET",
+  moon: "MOON",
+  belt: "BELT",
+  asteroid: "ASTEROID",
+  comets: "COMETS",
+  comet: "COMET",
+  starmap: "STAR MAP",
+  star: "STAR",
+  exoplanet: "EXOPLANET",
+  surface: "SURFACE",
+  "orbit-log": "ORBIT LOG",
+  rings: "RINGS",
+  notes: "NOTES",
+};
+
+/**
+ * All-caps "what this is" prefix for the bottom panel's focused-entry
+ * readout — e.g. "PLANET - Earth". A star's own selectable self-entry
+ * (see starSelfEntry) keeps id STARMAP_ID for App.tsx's back-navigation
+ * handling, but it represents the star you're standing on, not the star
+ * map itself, so it's special-cased ahead of the generic kind lookup.
+ */
+export function getCategoryLabel(nodeId: string): string {
+  if (nodeId === STARMAP_ID) return "STAR";
+  return CATEGORY_LABELS[getNodeKind(nodeId)];
+}
+
 /**
  * True when traveling between fromId and toId crosses the boundary
  * between the star map and "inside a solar system" — i.e. one side is

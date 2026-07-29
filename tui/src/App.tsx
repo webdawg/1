@@ -16,6 +16,7 @@ import {
 import { pickNextFocus } from "./spatialNav.js";
 import {
   getBreadcrumbLabel,
+  getCategoryLabel,
   getCenterGlyph,
   getCenterLabel,
   getDistanceDomain,
@@ -343,7 +344,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
           {transition
             ? ""
             : focused
-              ? `${focused.label} — ${toClockHour(focused.angleDeg)} o'clock, ${focused.distance.toFixed(2)}${getDistanceUnitLabel(centerId)}`
+              ? `${getCategoryLabel(focused.id)} - ${focused.label} — ${toClockHour(focused.angleDeg)} o'clock, ${focused.distance.toFixed(2)}${getDistanceUnitLabel(centerId)}`
               : "No orbiting bodies here."}
         </Text>
         {Array.from({ length: MAX_LOG_LINES }).map((_, idx) => (
