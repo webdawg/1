@@ -6,10 +6,13 @@ See `SCOPE.md` for the founding vision statement — the long-term idea behind
 this project, well beyond what's currently built. Not a spec, just the
 north star for judging where features should eventually head. See
 `ROADMAP.md` for the phased plan derived from it — check there for
-what's next before starting new work. See `DEVELOPMENT.md` for the
-development environment: prerequisites, setup, running, and how TUI
-changes get verified (no test framework yet, so this matters more than
-usual).
+what's next before starting new work. See `SPEC.md` for the technical
+specification of how the engine currently works (world model, layout,
+icon/placement rules, spatial nav, session model) — the concrete design
+to keep in sync with the code, distinct from `SCOPE.md`'s vision and
+`ROADMAP.md`'s plan. See `DEVELOPMENT.md` for the development
+environment: prerequisites, setup, running, and how TUI changes get
+verified (no test framework yet, so this matters more than usual).
 
 ## Project overview
 
