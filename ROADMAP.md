@@ -9,6 +9,16 @@ in `CLAUDE.md`'s Current status section, not here — this is phase-level.
 Phases are roughly sequential but not strict gates — later-phase ideas can
 start early if they're cheap, and phases can overlap.
 
+## What success looks like
+
+This is meant to become a real public multi-user thing, per `SCOPE.md`'s
+web-session/live-server idea — not just a personal local tool that stays
+single-player forever. That means Phase 3 (multi-user live server) is a
+genuine destination, not a someday-maybe, and architectural choices in
+Phases 1-2 should avoid painting it out (e.g. keep `worldTree.ts`'s
+position/state calculations pure functions of id + time, since a server
+will need to compute the same things `App.tsx` does locally today).
+
 ## Phase 1 — Single-player text engine (core loop)
 
 The base "center + orbiting things" navigation model, playable locally by
