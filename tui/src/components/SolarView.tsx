@@ -108,7 +108,14 @@ function buildGrid(
 
   const centerX = Math.floor(gridWidth / 2);
   const centerY = Math.floor(gridHeight / 2);
-  stampRow(grid, occupied, centerY, centerX - Math.floor(centerGlyph.length / 2), centerGlyph, "yellow", true, gridWidth);
+  // A star's own children include itself as a real, selectable entry at
+  // distance 0 (see worldTree.ts's starSelfEntry) — when that's present,
+  // it takes over the center spot through the normal entry-stamping loop
+  // below instead of this fixed, unselectable marker.
+  const hasSelfEntry = entries.some((entry) => entry.distance === 0);
+  if (!hasSelfEntry) {
+    stampRow(grid, occupied, centerY, centerX - Math.floor(centerGlyph.length / 2), centerGlyph, "yellow", true, gridWidth);
+  }
 
   const positions = computeGridPositions(entries, domain, gridWidth, gridHeight);
   const stampOrder = [...entries].sort((a, b) => (a.id === focusedId ? 0 : 1) - (b.id === focusedId ? 0 : 1));

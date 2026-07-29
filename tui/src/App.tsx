@@ -16,6 +16,7 @@ import {
   getOrbitChildren,
   isStarBoundary,
 } from "./worldTree.js";
+import { STARMAP_ID } from "./starFacts.js";
 import { saveSession, type SessionData } from "./session.js";
 
 const TICK_MS = 5000;
@@ -96,6 +97,22 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
   const focused = children.find((c) => c.id === focusedId) ?? null;
 
+  /** Pops one level back, animating the transition if it crosses the star/star-map boundary. Returns whether it did anything. */
+  function goBack(): boolean {
+    if (path.length <= 1) return false;
+    const nextPath = path.slice(0, -1);
+    const newCenterId = nextPath[nextPath.length - 1];
+    const logLine = `Back to ${getCenterLabel(newCenterId)}.`;
+    if (isStarBoundary(centerId, newCenterId)) {
+      setTransition({ nextPath, label: getBreadcrumbLabel(centerId), logLine });
+    } else {
+      setPath(nextPath);
+      persist(nextPath);
+      pushLog(logLine);
+    }
+    return true;
+  }
+
   const cols = columns || 80;
   const rowsSafe = rows || 24;
   const topHeight = Math.max(MIN_TOP_HEIGHT, rowsSafe - BOTTOM_PANEL_HEIGHT);
@@ -130,31 +147,27 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
       }
       if (key.return) {
         if (focused) {
-          const nextPath = [...path, focused.id];
-          const logLine = `Traveled to ${focused.label}.`;
-          if (isStarBoundary(centerId, focused.id)) {
-            setTransition({ nextPath, label: focused.label, logLine });
+          // The star-map exit entry represents traveling back out through
+          // the star you're standing at — a real, selectable object, not
+          // a child to push onto the path.
+          if (focused.id === STARMAP_ID) {
+            goBack();
           } else {
-            setPath(nextPath);
-            persist(nextPath);
-            pushLog(logLine);
+            const nextPath = [...path, focused.id];
+            const logLine = `Traveled to ${focused.label}.`;
+            if (isStarBoundary(centerId, focused.id)) {
+              setTransition({ nextPath, label: focused.label, logLine });
+            } else {
+              setPath(nextPath);
+              persist(nextPath);
+              pushLog(logLine);
+            }
           }
         }
         return;
       }
       if (key.escape || key.backspace) {
-        if (path.length > 1) {
-          const nextPath = path.slice(0, -1);
-          const newCenterId = nextPath[nextPath.length - 1];
-          const logLine = `Back to ${getCenterLabel(newCenterId)}.`;
-          if (isStarBoundary(centerId, newCenterId)) {
-            setTransition({ nextPath, label: getBreadcrumbLabel(centerId), logLine });
-          } else {
-            setPath(nextPath);
-            persist(nextPath);
-            pushLog(logLine);
-          }
-        }
+        goBack();
         return;
       }
       if (input === "/" || input === ":") {
@@ -191,20 +204,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         pushLog("Commands: help, back, save <text>, notes, whoami, quit");
         break;
       case "back": {
-        if (path.length > 1) {
-          const nextPath = path.slice(0, -1);
-          const newCenterId = nextPath[nextPath.length - 1];
-          const logLine = `Back to ${getCenterLabel(newCenterId)}.`;
-          if (isStarBoundary(centerId, newCenterId)) {
-            setTransition({ nextPath, label: getBreadcrumbLabel(centerId), logLine });
-          } else {
-            setPath(nextPath);
-            persist(nextPath);
-            pushLog(logLine);
-          }
-        } else {
-          pushLog(`Already at ${centerLabel}.`);
-        }
+        if (!goBack()) pushLog(`Already at ${centerLabel}.`);
         break;
       }
       case "save": {

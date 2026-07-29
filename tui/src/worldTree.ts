@@ -248,6 +248,25 @@ function applicableLeafKinds(ownerId: string): LeafKind[] {
   return ["surface", "orbit-log", "notes"];
 }
 
+/**
+ * The star you're centered on (Sol included) appears among its own orbit
+ * children — using its own actual glyph and name, not a separate icon —
+ * so it's a real, selectable object: travel "through the star" back to
+ * the star map is something you aim at and Enter, just like any planet
+ * or moon, not a special Escape-only shortcut. Distance 0 places it
+ * exactly at the grid's center, taking over the spot the fixed,
+ * unselectable center marker occupies in every other kind of view.
+ */
+function starSelfEntry(starId: string): OrbitEntry {
+  return {
+    id: STARMAP_ID,
+    label: getBreadcrumbLabel(starId),
+    glyph: getCenterGlyph(starId),
+    angleDeg: 0,
+    distance: 0,
+  };
+}
+
 function leafChildren(ownerId: string): OrbitEntry[] {
   const kinds = applicableLeafKinds(ownerId);
   return kinds.map((kind, index) => ({
@@ -304,7 +323,7 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
       angleDeg: COMETS_HUB_FACTS.displayAngleDeg,
       distance: COMETS_HUB_FACTS.displayDistanceAU,
     };
-    return [...planetEntries, beltEntry, cometsHubEntry];
+    return [...planetEntries, beltEntry, cometsHubEntry, starSelfEntry(nodeId)];
   }
 
   if (isKnownPlanet(nodeId)) {
@@ -360,7 +379,11 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
       label: "Sun",
       glyph: SUN_GLYPH,
       angleDeg: 0,
-      distance: 0,
+      // Genuinely 0 ly from itself, but distance 0 is reserved to mean
+      // "exact grid center" (see computeGridPositions) — the star map's
+      // own center marker already occupies that spot, so this uses a
+      // negligible nonzero value to land just next to it instead.
+      distance: 0.01,
     };
     const starEntries: OrbitEntry[] = STAR_ORDER.map((starId) => {
       const facts = STAR_FACTS[starId];
@@ -388,7 +411,7 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
         distance: position.distanceAU,
       };
     });
-    return [...leaves, ...exoplanetEntries];
+    return [...leaves, ...exoplanetEntries, starSelfEntry(nodeId)];
   }
 
   if (isMoonId(nodeId) || isAsteroidId(nodeId) || isCometId(nodeId) || isExoplanetId(nodeId)) return leafChildren(nodeId);

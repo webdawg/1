@@ -67,7 +67,10 @@ export function computeGridPositions(
 
   const positions = new Map<string, GridPoint>();
   for (const entry of entries) {
-    const radius = scaleDistance(entry.distance, domain.min, domain.max, minRadius, maxRadius);
+    // Zero is a deliberate signal, not just a very small number: it means
+    // "at the reference point itself," so it plots dead center rather than
+    // being floored up to minRadius like any other near-zero distance.
+    const radius = entry.distance === 0 ? 0 : scaleDistance(entry.distance, domain.min, domain.max, minRadius, maxRadius);
     positions.set(entry.id, polarToGrid(centerX, centerY, entry.angleDeg, radius));
   }
   return positions;

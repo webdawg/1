@@ -72,7 +72,7 @@ bracket-style signaling category before you even read the letter inside:
 
 | Category | Motif | Glyphs |
 |---|---|---|
-| Sun (center marker only) | `(*)` | `(*)` |
+| Sun | `(*)` | `(*)` — as an orbit entry in the star map, or as the selectable center-of-view entry when you're centered on it (see Star travel transition) |
 | Terrestrial planet | `(x)` | Mercury `(.)`, Venus `(v)`, Earth `(O)`, Mars `(r)` |
 | Gas/ice giant (all 4 — Jupiter/Saturn/Uranus/Neptune all have real rings) | `=x=` | `=J=` `=S=` `=U=` `=N=` |
 | Moon | `.m.` | shared across all moons |
@@ -80,8 +80,8 @@ bracket-style signaling category before you even read the letter inside:
 | Individual asteroid | `{.}` | `{.}` |
 | Comets hub | `~^~` | `~^~` |
 | Individual comet | `~'~` | `~'~` |
-| Star map (center marker only) | `{*}` | `{*}` |
-| Star (other than Sol) | `*x*` | one distinct letter/digit per star, e.g. `*7*` TRAPPIST-1, `*1*` 51 Pegasi — see `starFacts.ts` |
+| Star map (center marker only — it's the root, nothing further out to select) | `{*}` | `{*}` |
+| Star (other than Sol) | `*x*` | one distinct letter/digit per star, e.g. `*7*` TRAPPIST-1, `*1*` 51 Pegasi — see `starFacts.ts`. Same dual role as the Sun: orbit entry in the star map, or selectable center-of-view entry when centered on it |
 | Exoplanet | `(x)` rocky / `=x=` gas giant | `(e)` / `=g=` |
 | Leaf (Surface/Orbit Log/Rings/Notes) | `»` | shared `»` — menu-styled, not body-styled; the label disambiguates which leaf |
 
@@ -107,8 +107,12 @@ Two-pass stamping per frame, in `SolarView.tsx`:
    skipped for that frame — the icon stays visible either way. Labels are
    best-effort; icons are guaranteed.
 
-The center marker is placed before both passes, fixed and unmoved (it's
-"where you are," not something that should visually drift).
+In views without a selectable self-entry (planets, moons, the belt, ...),
+a fixed center marker is stamped before both passes, unmoved (it's "where
+you are," not something that should drift). When centered on a star,
+there's no separate fixed marker — the star's own self-entry (distance 0,
+see Star travel transition) goes through the same two passes as
+everything else, landing exactly at the grid center.
 
 ## Spatial navigation
 
@@ -133,6 +137,23 @@ children rebuild for the new center via `getOrbitChildren`, and focus
 resets to the new set's first entry.
 
 ## Star travel transition
+
+Leaving a star (Sol included) back to the star map isn't only an Escape
+shortcut — the star itself is a real, selectable orbit entry among its
+own children, not a separate icon: `worldTree.ts`'s `starSelfEntry()`
+adds an entry using the star's *own* glyph and name (id `STARMAP_ID`),
+at distance 0. `computeGridPositions` treats distance 0 as a deliberate
+signal — "the reference point itself" — plotting it at the exact grid
+center (bypassing the usual `minRadius` floor), which is also why
+`SolarView` skips drawing its normal fixed, unselectable center marker
+whenever an entry claims that spot (`hasSelfEntry` check). You aim at it
+with arrow keys and press Enter like any other object; `App.tsx`'s
+`key.return` handler special-cases `focused.id === STARMAP_ID` to call
+the same `goBack()` path-popping logic Escape and `/back` use, rather
+than pushing it as a new child (which would nest the star map inside
+itself). The star map's own center marker has no such self-entry — it's
+the root, there's nothing further out to select — so it stays the plain
+fixed marker every other (non-star) view uses.
 
 Every Enter/Escape (and the `/back` command) is instant *except* one
 specific crossing: moving between the star map and a star (Sol included),
