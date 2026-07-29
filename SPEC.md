@@ -122,11 +122,17 @@ angle-sorted list. `spatialNav.ts`'s `pickNextFocus`:
 
 - Filter candidates strictly in the pressed direction (`right`: `dx>0`,
   etc.).
-- Score survivors `primary + perpendicular * 3` (primary = delta along
-  the pressed axis, perpendicular = the other axis's delta — grid coords
-  already include the display's aspect-ratio stretch, so this weighting
-  is what favors "almost straight" over "diagonal"). Pick the minimum;
-  tie-break by id.
+- Score survivors `primary + perpendicular * penalty` (primary = delta
+  along the pressed axis, perpendicular = the other axis's delta — grid
+  coords already include the display's aspect-ratio stretch, so this
+  weighting is what favors "almost straight" over "diagonal"). Pick the
+  minimum; tie-break by id. `penalty` is 3 normally, but 0.5 for a
+  distance-0 ("home") entry — a genuinely-closer neighbor can otherwise
+  consistently outscore it from every direction, creating a 2-cycle
+  between two other entries that permanently strands it (hit in practice:
+  Mars ↔ Mercury excluding the Sun). The lighter penalty keeps it
+  reachable from a wide cone of directions without making it an
+  unconditional magnet.
 - If nothing lies in that direction at all, fall back to angle-order
   wraparound (step ±1 through the angle-sorted entries, wrapping) so
   arrow keys always do *something* rather than going dead at layout

@@ -9,6 +9,15 @@ import type { OrbitEntry } from "./worldTree.js";
 export type Direction = "up" | "down" | "left" | "right";
 
 const PERPENDICULAR_PENALTY = 3;
+// A distance-0 entry ("home" — see layout.ts's computeGridPositions) sits
+// at the exact center, so it's very often off-axis from wherever you're
+// currently focused. Scored like everything else, a genuinely-closer
+// neighbor can consistently beat it from every direction at once,
+// stranding it behind an unbreakable cycle between two other entries.
+// A lighter penalty keeps it reachable from a wide cone of directions
+// without making it an unconditional magnet (it still loses to anything
+// clearly closer and better-aligned).
+const HOME_PERPENDICULAR_PENALTY = 0.5;
 
 export function pickNextFocus(
   entries: OrbitEntry[],
@@ -29,23 +38,24 @@ export function pickNextFocus(
 
     const dx = pos.x - currentPos.x;
     const dy = pos.y - currentPos.y;
+    const perpendicularPenalty = entry.distance === 0 ? HOME_PERPENDICULAR_PENALTY : PERPENDICULAR_PENALTY;
     let score: number;
     switch (direction) {
       case "right":
         if (dx <= 0) continue;
-        score = dx + Math.abs(dy) * PERPENDICULAR_PENALTY;
+        score = dx + Math.abs(dy) * perpendicularPenalty;
         break;
       case "left":
         if (dx >= 0) continue;
-        score = -dx + Math.abs(dy) * PERPENDICULAR_PENALTY;
+        score = -dx + Math.abs(dy) * perpendicularPenalty;
         break;
       case "down":
         if (dy <= 0) continue;
-        score = dy + Math.abs(dx) * PERPENDICULAR_PENALTY;
+        score = dy + Math.abs(dx) * perpendicularPenalty;
         break;
       case "up":
         if (dy >= 0) continue;
-        score = -dy + Math.abs(dx) * PERPENDICULAR_PENALTY;
+        score = -dy + Math.abs(dx) * perpendicularPenalty;
         break;
     }
 
