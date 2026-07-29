@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useApp, useInput } from "ink";
 import SolarView from "./components/SolarView.js";
+import ContentView from "./components/ContentView.js";
 import Prompt from "./components/Prompt.js";
-import { getCenterLabel, getDistanceDomain, getOrbitChildren } from "./worldTree.js";
+import { getBreadcrumbLabel, getCenterLabel, getDistanceDomain, getNodeKind, getOrbitChildren } from "./worldTree.js";
 import { saveSession, type SessionData } from "./session.js";
 
 const TICK_MS = 5000;
@@ -47,6 +48,8 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
   const centerId = path[path.length - 1];
   const centerLabel = getCenterLabel(centerId);
+  const centerKind = getNodeKind(centerId);
+  const isLeaf = centerKind === "surface" || centerKind === "orbit-log" || centerKind === "notes";
   const domain = useMemo(() => getDistanceDomain(centerId), [centerId]);
   const children = useMemo(
     () => [...getOrbitChildren(centerId, new Date())].sort((a, b) => a.angleDeg - b.angleDeg),
@@ -163,9 +166,13 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
     <Box flexDirection="column">
       <Text>
         Centered on <Text bold>{centerLabel}</Text>
-        {path.length > 1 ? `  (${path.map(getCenterLabel).join(" > ")})` : ""}
+        {path.length > 1 ? `  (${path.map(getBreadcrumbLabel).join(" > ")})` : ""}
       </Text>
-      <SolarView centerLabel={centerLabel} orbitEntries={children} domain={domain} focusedId={focused?.id ?? null} />
+      {isLeaf ? (
+        <ContentView nodeId={centerId} date={new Date()} notes={sessionRef.current.notes[centerId] ?? []} />
+      ) : (
+        <SolarView centerLabel={centerLabel} orbitEntries={children} domain={domain} focusedId={focused?.id ?? null} />
+      )}
       <Box flexDirection="column" marginTop={1}>
         {log.map((line, idx) => (
           <Text key={idx} dimColor>
