@@ -4,7 +4,7 @@ import SolarView from "./components/SolarView.js";
 import ContentView from "./components/ContentView.js";
 import Prompt from "./components/Prompt.js";
 import WarpTransition from "./components/WarpTransition.js";
-import { applyZoom, computeGridPositions, toClockHour, ZOOM_MAX, ZOOM_MIN } from "./layout.js";
+import { applyZoom, computeAutoZoomLevel, computeGridPositions, toClockHour, ZOOM_MAX, ZOOM_MIN } from "./layout.js";
 import { pickNextFocus } from "./spatialNav.js";
 import {
   getBreadcrumbLabel,
@@ -15,6 +15,7 @@ import {
   getNodeKind,
   getOrbitChildren,
   isStarBoundary,
+  parseLeafId,
 } from "./worldTree.js";
 import { STARMAP_ID } from "./starFacts.js";
 import { saveSession, type SessionData } from "./session.js";
@@ -97,9 +98,19 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   }, [children]);
 
   // Zoom is a property of the current view, not something that should
-  // follow you to a different one.
+  // follow you to a different one — land already spread out as far as a
+  // single sacrificed outlier allows, rather than always starting flat at
+  // 1x and making the user zoom in by hand every time.
+  const autoZoomLevel = useMemo(
+    () => computeAutoZoomLevel(children.filter((c) => parseLeafId(c.id) === null).map((c) => c.distance), domain),
+    [children, domain]
+  );
   useEffect(() => {
-    setZoomLevel(0);
+    setZoomLevel(autoZoomLevel);
+    // Only centerId should trigger this — re-running on every autoZoomLevel
+    // recompute (e.g. the 5s position tick) would fight the user's own
+    // manual zoom adjustments.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centerId]);
 
   const zoomedDomain = useMemo(() => applyZoom(domain, zoomLevel), [domain, zoomLevel]);

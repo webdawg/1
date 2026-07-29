@@ -60,6 +60,40 @@ export function applyZoom(domain: { min: number; max: number }, zoomLevel: numbe
   return { min: domain.min, max: domain.min + span };
 }
 
+// Fraction of distinct real distances guaranteed to land within the
+// visible radius by default — the rest are sacrificed to the outer rim.
+// A "sacrifice just the single farthest thing" rule sounds tighter but
+// falls apart the moment there's more than one outlier (e.g. several
+// stars all hundreds of light-years past the nearby cluster) — ignoring
+// only the very farthest barely moves the target when its closest
+// neighbor is nearly as extreme. A fixed fraction is blunter but stays
+// predictable regardless of how the outliers happen to be clustered.
+const AUTO_ZOOM_KEEP_FRACTION = 0.75;
+
+/**
+ * The zoom level to land on by default: zoom in enough that most real
+ * entries (see `AUTO_ZOOM_KEEP_FRACTION`) fit inside the visible radius,
+ * maximizing spread for the majority at the cost of pinning the most
+ * extreme ones to the outer rim. `distances` should already exclude
+ * leaves and the distance-0 "home" entry — neither is a real spread
+ * target. Falls back to no zoom (level 0) when there's too little data to
+ * meaningfully sacrifice anything (need at least 4 distinct distances
+ * before 25% rounds up to a whole entry).
+ */
+export function computeAutoZoomLevel(distances: number[], domain: { min: number; max: number }): number {
+  const distinct = Array.from(new Set(distances.filter((d) => d > 0))).sort((a, b) => a - b);
+  const keepCount = Math.max(1, Math.ceil(distinct.length * AUTO_ZOOM_KEEP_FRACTION));
+  if (keepCount >= distinct.length) return 0;
+
+  const targetMax = distinct[keepCount - 1];
+  const targetSpan = targetMax - domain.min;
+  const span = domain.max - domain.min;
+  if (targetSpan <= 0 || span <= 0) return 0;
+
+  const level = Math.round(Math.log2(span / targetSpan));
+  return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, level));
+}
+
 interface PositionedEntry {
   id: string;
   angleDeg: number;

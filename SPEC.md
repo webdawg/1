@@ -83,10 +83,20 @@ whatever's near you, at the cost of pinning anything beyond the new
 effective max to the outer rim — the same clamp-to-edge behavior
 out-of-domain distances already had, just reachable interactively instead
 of only happening to comets. Zoom is a property of the current view, not
-a global setting: it resets to 1.00x whenever `centerId` changes, and has
-no effect (and shows no indicator) on a leaf's `ContentView` screen, where
-there's no spatial grid for it to apply to. The current multiplier is
-shown top-right of the bottom panel's breadcrumb row (a `Box` with
+a global setting: it resets whenever `centerId` changes — not to a flat
+1.00x, but to `layout.ts`'s `computeAutoZoomLevel`, which zooms in enough
+that `AUTO_ZOOM_KEEP_FRACTION` (75%) of the view's *real* distances
+(leaves and the distance-0 "home" entry excluded — neither is a spread
+target) fit inside the visible radius, sacrificing the most extreme ~25%
+to the rim. A "sacrifice only the single farthest thing" rule sounds
+tighter but falls apart the moment a view has more than one outlier
+(the star map has several stars all hundreds of light-years past the
+near cluster) — a fixed fraction stays predictable regardless of how the
+outliers happen to be clustered. Manual `+`/`-` still adjusts from
+whatever level a view auto-lands on. Zoom has no effect (and shows no
+indicator) on a leaf's `ContentView` screen, where there's no spatial
+grid for it to apply to. The current multiplier is shown top-right of
+the bottom panel's breadcrumb row (a `Box` with
 `justifyContent="space-between"`).
 
 ## Icon system
