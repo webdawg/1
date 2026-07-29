@@ -16,9 +16,10 @@ import { getMoonsOf, isMoonId, MOON_FACTS, type MoonId } from "./moonFacts.js";
 import { hasRings } from "./ringFacts.js";
 import { ASTEROID_FACTS, getAsteroidsSortedByDistance, isAsteroidId, type AsteroidId } from "./asteroidFacts.js";
 import { BELT_FACTS, BELT_ID } from "./beltFacts.js";
+import { COMET_FACTS, COMET_ORDER, COMETS_HUB_FACTS, COMETS_HUB_ID, getCometPosition, isCometId } from "./cometFacts.js";
 
 export type LeafKind = "surface" | "orbit-log" | "rings" | "notes";
-export type NodeKind = "sun" | "planet" | "moon" | "belt" | "asteroid" | LeafKind;
+export type NodeKind = "sun" | "planet" | "moon" | "belt" | "asteroid" | "comets" | "comet" | LeafKind;
 
 export interface OrbitEntry {
   id: string;
@@ -57,6 +58,9 @@ const PLANET_META: Record<PlanetName, { label: string; glyph: string }> = {
 
 const SUN_AU_DOMAIN: DistanceDomain = { min: 0.38, max: 30.1 };
 const LEAF_DOMAIN: DistanceDomain = { min: 1, max: 3 };
+// Comets range from well under 1 AU to hundreds of AU; anything past this
+// simply pins to the outer edge of the display (scaleDistance clamps).
+const COMET_DISPLAY_DOMAIN: DistanceDomain = { min: 0.2, max: 40 };
 
 const LEAF_LABELS: Record<LeafKind, string> = {
   surface: "Surface",
@@ -103,6 +107,8 @@ function getOwnerLabel(ownerId: string): string {
   if (isMoonId(ownerId)) return MOON_FACTS[ownerId].label;
   if (ownerId === BELT_ID) return BELT_FACTS.label;
   if (isAsteroidId(ownerId)) return ASTEROID_FACTS[ownerId].label;
+  if (ownerId === COMETS_HUB_ID) return COMETS_HUB_FACTS.label;
+  if (isCometId(ownerId)) return COMET_FACTS[ownerId].label;
   return ownerId;
 }
 

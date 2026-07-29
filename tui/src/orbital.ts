@@ -9,7 +9,7 @@ const DEG = Math.PI / 180;
 // Milliseconds at J2000.0 epoch (2000-01-01 12:00 UTC).
 const J2000_MS = Date.UTC(2000, 0, 1, 12, 0, 0);
 
-function rev(deg: number): number {
+export function rev(deg: number): number {
   const r = deg % 360;
   return r < 0 ? r + 360 : r;
 }
@@ -124,10 +124,11 @@ export interface PlanetPosition {
   distanceAU: number;
 }
 
-function solveEccentricAnomaly(mDeg: number, e: number): number {
+/** Solves Kepler's equation E - e*sin(E) = M for the eccentric anomaly, in radians. */
+export function solveEccentricAnomaly(mDeg: number, e: number, iterations = 8): number {
   const m = rev(mDeg) * DEG;
   let E = m;
-  for (let n = 0; n < 8; n++) {
+  for (let n = 0; n < iterations; n++) {
     const delta = E - e * Math.sin(E) - m;
     const derivative = 1 - e * Math.cos(E);
     E -= delta / derivative;
