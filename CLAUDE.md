@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 See `SCOPE.md` for the founding vision statement — the long-term idea behind
 this project, well beyond what's currently built. Not a spec, just the
-north star for judging where features should eventually head.
+north star for judging where features should eventually head. See
+`ROADMAP.md` for the phased plan derived from it — check there for
+what's next before starting new work.
 
 ## Project overview
 
@@ -109,22 +111,17 @@ Say something like "resume the comet work" and Claude should:
 
 ## Long-term roadmap
 
-1. **Finish comets** (in progress — see above).
-2. **Real multi-user server**, replacing `session.ts`'s local-file
-   persistence with the shape it already anticipates (session id + resume
-   key handed out by a server instead of generated locally). This is the
-   biggest architectural step and is explicitly foreshadowed in the code.
-3. **More body categories**: dwarf planets (Pluto, Ceres, Eris...), maybe
-   individually-tracked Kuiper Belt/TNO objects beyond the current
-   single-point comets hub.
-4. **Tests** — nothing is set up for the TUI (no framework declared) or for
-   the Python skeleton (`pytest` not yet a dependency). Orbital math
-   (`orbital.ts`, `cometFacts.ts`'s Kepler solver) is the highest-value
-   target once a framework is picked.
-5. **Decide the fate of the Python skeleton** (`src/one/`, `tests/`,
-   `pyproject.toml`) — it's unrelated to the TUI and has had zero work since
-   the initial scaffold commit. Either repurpose it for something (a future
-   server backend?) or remove it to stop the repo describing two projects.
+See `ROADMAP.md` — phased plan (Phase 1: core single-player loop, mostly
+done; Phase 2: fill out the world, comets in progress now; Phase 3+:
+multi-user server, accessibility, real-space grounding, narrative layer).
+Update it as phases complete or scope shifts; keep this file's Current
+status section for the tactical, uncommitted-right-now detail instead.
+
+One item worth flagging here since it's not really a roadmap phase: the
+Python skeleton (`src/one/`, `tests/`, `pyproject.toml`) is unrelated to the
+TUI and has had zero work since the initial scaffold commit. Its fate
+(repurpose vs. remove) should get decided at some point so the repo stops
+describing two projects.
 
 Since no test runner or linter is configured for either the Python skeleton
 or the TUI, don't assume commands like `pytest`, `ruff`, or `eslint` are
