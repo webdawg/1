@@ -335,6 +335,78 @@ per jump (`App.tsx`'s `startStarTransition`, shared by both the forward
 `key.return` case and `goBack()`) from whichever id involved in the
 crossing is the star.
 
+## Time — three times
+
+`SCOPE.md`'s 2026-07-30 addenda: the engine tracks three times at once,
+surfaced via the `time` command (`App.tsx`'s `runCommand`):
+
+1. **Actual** — real time, the user's computer clock (`now.toLocaleString()`;
+   an NTP server is future work).
+2. **Universe** — seconds since the Big Bang, in human units.
+   `relativity.ts`'s `universeAgeSeconds(now)` anchors a Planck-2018
+   estimate (~13.797 billion years) to a fixed reference instant and adds
+   elapsed real time from there, so it never needs to recompute the whole
+   age; `formatUniverseAge` breaks the result into years/days/H:M:S.
+3. **Drift** — Times 1 and 2, but continuously altered by real
+   gravitational time dilation as the player dwells at a body. Shown as a
+   single accumulated offset (`formatDriftMs`) applying to both clocks
+   equally, rather than spelling out two full adjusted timestamps.
+
+**Physics** (`relativity.ts`): the proper (non-linearized) formula, not
+the weak-field shortcut — `factor = sqrt(1 - 2GM/(rc²))`, with
+`GM = gravity * radius²` computed from each body's real surface gravity
+and radius (the same `gravity`/`diameterKm` shape `planetFacts.ts` and
+now `starFacts.ts` both use), clamped so the inner term never reaches 1.
+The proper formula matters because it stays correct even in the strong-field
+regime — the curated pulsar PSR B1257+12 is a real neutron star
+(~1.4 solar masses, ~11km radius) where `2GM/(rc²) ≈ 0.38`, giving a
+factor of ~0.79 (a clock there runs at ~79% speed). The weak-field linear
+approximation would quietly break down at that scale.
+
+A node's total dilation factor (`dilationFactor`) multiplies two
+independent terms: a **local** term (the node's own surface gravity, if
+it's a body with known local physics — currently the 8 planets and every
+star, including Sol) and a **remote** term (the pull of the node's
+system star at the node's real distance from it). `worldTree.ts`'s
+`getDilationInputs(nodeId, date)` resolves which terms apply per node,
+reusing existing position machinery rather than adding new position
+math: planets use `getPlanetPosition`'s live `distanceAU`; moons
+approximate via their parent planet's distance (`MoonFacts.parent`);
+asteroids/comets/exoplanets use their own already-curated `distanceAU`;
+a star itself uses only its local term (no remote term — meaningless at
+distance 0); the star map, belt, and comets hub — nothing with a single
+real position — get no dilation (factor 1, baseline).
+
+**Accumulation**: no dedicated timer — the existing `TICK_MS` (5000ms)
+interval that already drives `now`/position recompute also advances a
+persisted `timeDriftMs` (`session.ts`) each tick, scaled by elapsed real
+time and how far the current node's factor is from 1 (`advanceDrift`).
+Mid SOLAR BASE JUMP (`App.tsx`'s `transition` state truthy), the factor
+is taken to be exactly 1 rather than computed from wherever the player
+was or will be — this isn't a special-cased pause on the accumulator;
+time doesn't "freeze" during a jump. The player simply isn't within any
+gravity well while in transit between systems, so there's genuinely no
+relativistic effect to accumulate ("sun transport does not alter time,"
+per the addendum, clarified further the same day: "time doesn't freeze
+during a jump — it's just that there's no relativistic effect during
+transit"). Verified via tmux with a precisely-timed sleep bracketing an
+entire jump: `timeDriftMs` is bit-for-bit unchanged across transit, even
+though the departure star's own dilation would otherwise contribute
+measurably over that many seconds.
+
+**Display**: `App.tsx`'s bottom panel shows all three times *continuously*
+in the bottom-right HUD corner (not just via `time`) — actual time
+(`HH:MM:SS`, ticking every second off its own dedicated `clockNow`
+interval, deliberately separate from the coarser 5s position/drift tick
+so the clock visibly runs), a compact universe age
+(`formatUniverseAgeCompact`, e.g. `13.797B yrs` — the full
+years/days/H:M:S breakdown is `formatUniverseAge`, reserved for the
+`time` command's more detailed output), and the current drift
+(`formatDriftMs`, read directly off `sessionRef.current.timeDriftMs`).
+Visible on every screen, including leaf views and mid-jump — where the
+zoom indicator that shares that corner is conditionally hidden, the
+three times still show.
+
 ## Session model
 
 A session is a `sessionId` + `resumeKey` pair, generated locally and
@@ -349,10 +421,10 @@ persisted the same way.
 ## Commands
 
 `/` or `:` enters command mode. `help`, `back`, `save <text>`, `notes`,
-`whoami`, `quit`/`exit`. Unknown commands log an error and return to nav
-mode. `~` (available directly from nav mode, no `/` needed) opens the
-Console instead — see Console above for its own separate command set
-(`become llm`, `become human`, ...).
+`whoami`, `time`, `quit`/`exit`. Unknown commands log an error and
+return to nav mode. `~` (available directly from nav mode, no `/`
+needed) opens the Console instead — see Console above for its own
+separate command set (`become llm`, `become human`, ...).
 
 Discoverability: nothing in the UI required a player to already know
 `help` existed. The persistent bottom-prompt hint (`Prompt.tsx`, shown

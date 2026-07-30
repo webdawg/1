@@ -24,6 +24,8 @@ export interface SessionData {
   notes: Record<string, string[]>;
   /** Default entity type; becoming LLM requires solving the console's puzzle — see Console.tsx. */
   playerType: PlayerType;
+  /** Accumulated relativistic drift, in ms (negative = time lost to dilation so far) — see relativity.ts. */
+  timeDriftMs: number;
 }
 
 function token(bytes: number): string {
@@ -45,6 +47,7 @@ export function createSession(): SessionData {
     path: ["starmap", "sun"],
     notes: {},
     playerType: "HUMAN",
+    timeDriftMs: 0,
   };
 }
 
@@ -62,6 +65,6 @@ export async function loadSession(
   const raw = await readFile(path, "utf8");
   const data = JSON.parse(raw) as SessionData;
   if (data.resumeKey !== resumeKey) return null;
-  // Older saved sessions predate playerType.
-  return { ...data, playerType: data.playerType ?? "HUMAN" };
+  // Older saved sessions predate playerType/timeDriftMs.
+  return { ...data, playerType: data.playerType ?? "HUMAN", timeDriftMs: data.timeDriftMs ?? 0 };
 }

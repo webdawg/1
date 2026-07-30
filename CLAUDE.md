@@ -77,7 +77,9 @@ purpose shifts or a new one is added.
   category, each exposing an id union type + a `Record<Id, Facts>` + an
   `isXId` guard, following the same shape. `starFacts.ts` is a curated
   static snapshot (~16 real stars, ~27 real exoplanets) — same pattern as
-  the rest, no network calls.
+  the rest, no network calls. `planetFacts.ts` and `starFacts.ts` both
+  carry real `gravity`/`diameterKm` — used for display, and now also for
+  `relativity.ts`'s real gravitational time dilation.
 - `src/components/SolarView.tsx` — renders the orbit-grid ASCII view: a
   full-width tile of nothing but icons+labels (no text list — that's the
   bottom panel's job). Generic over `OrbitEntry`/`DistanceDomain`; new body
@@ -118,12 +120,18 @@ purpose shifts or a new one is added.
   `WarpTransition`. Handles `become llm`/`become human` commands; the
   former gates on a 5-round token-prediction puzzle. See `SPEC.md`'s
   Console section for the full mechanic and command list.
+- `src/relativity.ts` — pure physics/math, no React: real gravitational
+  time dilation (`dilationFactor`, the proper non-linearized formula) and
+  the "seconds since the Big Bang" universe clock. `worldTree.ts`'s
+  `getDilationInputs` maps a node id to what this needs; `App.tsx`
+  accumulates it each tick into `session.ts`'s persisted `timeDriftMs`,
+  surfaced via the `time` command. See `SPEC.md`'s Time section.
 
 Run it: `cd tui && npm install && npm start`
 Typecheck: `cd tui && npm run typecheck`
 No test framework is configured for the TUI yet.
 
-## Current status (2026-07-29)
+## Current status (2026-07-30)
 
 Committed and working: planets with real orbital mechanics, major moons,
 gas/ice giant rings, the asteroid belt and its largest asteroids, and
@@ -165,6 +173,24 @@ box-width-math pitfall `SolarView` hit earlier in the project (`DEVELOPMENT.md`)
 `Console`'s bordered+padded box needs `gridWidth + 4`, not `+ 2`, to
 land at the full tile width — verified via tmux, the undersized version
 silently corrupted the input row's rendering.
+
+Added this session: real gravitational time dilation (`relativity.ts`),
+surfaced as a three-times model — actual time, universe time (seconds
+since the Big Bang), and a persisted, continuously-accumulating drift
+between the two — both via the `time` command and now permanently in
+the HUD's bottom-right corner (its own 1s-interval `clockNow`, separate
+from the coarser 5s position/drift tick, so it visibly runs). Real
+`gravity`/`diameterKm` data was added for the Sun and all 16 curated
+stars (not just the 8 planets, which already had it) so every system
+produces genuine dilation, including a dramatic real strong-field case
+at the curated pulsar PSR B1257+12. The existing 5-second
+position-recompute tick now also drives drift accumulation — no new
+timer for that part. No relativistic effect applies during a SOLAR BASE
+JUMP — not a special-cased pause on the accumulator, just nothing
+massive nearby while in transit between systems (`SCOPE.md`'s
+2026-07-30 addendum: "time doesn't freeze during a jump — it's just
+that there's no relativistic effect during transit"), verified via a
+precisely-timed tmux test bracketing an entire jump.
 
 Nothing in-progress/uncommitted right now — check `ROADMAP.md` Phase 2 for
 what's next (dwarf planets, bots/NPCs, BBS-style messages, tests).

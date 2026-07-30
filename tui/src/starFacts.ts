@@ -6,6 +6,13 @@ export const STARMAP_FACTS = {
     "A curated sample of real, notable star systems near the Sun — not an exhaustive catalog (billions of stars are known in the galaxy alone). Distances are measured from the Sun.",
 } as const;
 
+// Sol's own gravity/radius — kept separate from STAR_FACTS since Sol is
+// excluded from that record (see below). Used by relativity.ts's
+// gravitational time dilation, same real-physics treatment as everywhere
+// else in this codebase.
+export const SUN_GRAVITY = 274; // m/s², surface
+export const SUN_DIAMETER_KM = 1_392_000;
+
 export type StarId =
   | "sun"
   | "proxima-centauri"
@@ -54,6 +61,9 @@ export interface StarFacts {
   spectralType: string;
   glyph: string;
   displayAngleDeg: number;
+  /** Surface gravity, m/s² — derived from the star's real mass/radius (see relativity.ts). */
+  gravity: number;
+  diameterKm: number;
 }
 
 export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
@@ -64,6 +74,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "M5.5V red dwarf",
     glyph: "*P*",
     displayAngleDeg: 10,
+    gravity: 1590,
+    diameterKm: 202_000,
   },
   "alpha-centauri": {
     label: "Alpha Centauri",
@@ -73,6 +85,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "G2V + K1V binary",
     glyph: "*A*",
     displayAngleDeg: 25,
+    gravity: 203,
+    diameterKm: 1_698_000,
   },
   "barnards-star": {
     label: "Barnard's Star",
@@ -82,6 +96,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "M4V red dwarf",
     glyph: "*B*",
     displayAngleDeg: 50,
+    gravity: 1028,
+    diameterKm: 273_000,
   },
   "ross-128": {
     label: "Ross 128",
@@ -90,6 +106,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "M4V red dwarf",
     glyph: "*R*",
     displayAngleDeg: 75,
+    gravity: 1186,
+    diameterKm: 274_000,
   },
   "tau-ceti": {
     label: "Tau Ceti",
@@ -98,6 +116,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "G8V",
     glyph: "*C*",
     displayAngleDeg: 100,
+    gravity: 341,
+    diameterKm: 1_104_000,
   },
   "teegardens-star": {
     label: "Teegarden's Star",
@@ -106,6 +126,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "M7V red dwarf",
     glyph: "*N*",
     displayAngleDeg: 130,
+    gravity: 1459,
+    diameterKm: 181_000,
   },
   "gliese-667c": {
     label: "Gliese 667 C",
@@ -114,6 +136,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "M1.5V red dwarf",
     glyph: "*G*",
     displayAngleDeg: 155,
+    gravity: 482,
+    diameterKm: 585_000,
   },
   "trappist-1": {
     label: "TRAPPIST-1",
@@ -123,6 +147,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "M8V ultra-cool dwarf",
     glyph: "*7*",
     displayAngleDeg: 180,
+    gravity: 1665,
+    diameterKm: 168_000,
   },
   "55-cancri": {
     label: "55 Cancri",
@@ -131,6 +157,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "G8V",
     glyph: "*5*",
     displayAngleDeg: 205,
+    gravity: 279,
+    diameterKm: 1_313_000,
   },
   "51-pegasi": {
     label: "51 Pegasi",
@@ -140,6 +168,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "G5V",
     glyph: "*1*",
     displayAngleDeg: 230,
+    gravity: 199,
+    diameterKm: 1_722_000,
   },
   "hd-209458": {
     label: "HD 209458",
@@ -148,6 +178,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "G0V",
     glyph: "*H*",
     displayAngleDeg: 255,
+    gravity: 219,
+    diameterKm: 1_670_000,
   },
   "toi-700": {
     label: "TOI-700",
@@ -156,6 +188,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "M2V red dwarf",
     glyph: "*O*",
     displayAngleDeg: 280,
+    gravity: 645,
+    diameterKm: 585_000,
   },
   "kepler-186": {
     label: "Kepler-186",
@@ -164,6 +198,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "M1V red dwarf",
     glyph: "*K*",
     displayAngleDeg: 300,
+    gravity: 507,
+    diameterKm: 724_000,
   },
   "kepler-452": {
     label: "Kepler-452",
@@ -172,6 +208,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "G2V",
     glyph: "*2*",
     displayAngleDeg: 320,
+    gravity: 231,
+    diameterKm: 1_545_000,
   },
   "wasp-12": {
     label: "WASP-12",
@@ -180,6 +218,8 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "G0V",
     glyph: "*W*",
     displayAngleDeg: 340,
+    gravity: 150,
+    diameterKm: 2_186_000,
   },
   "psr-b1257+12": {
     label: "PSR B1257+12",
@@ -189,6 +229,11 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     spectralType: "Millisecond pulsar",
     glyph: "*X*",
     displayAngleDeg: 355,
+    // A real neutron star: ~1.4 solar masses collapsed into an ~11km radius.
+    // 2GM/(rc²) ≈ 0.38 here — a genuinely strong-field GR regime, not the
+    // weak-field approximation everywhere else. See relativity.ts.
+    gravity: 1.5e12,
+    diameterKm: 22,
   },
 };
 

@@ -20,6 +20,7 @@ import {
   getCategoryLabel,
   getCenterGlyph,
   getCenterLabel,
+  getDilationInputs,
   getDistanceDomain,
   getDistanceUnitLabel,
   getNodeKind,
@@ -30,6 +31,14 @@ import {
 } from "./worldTree.js";
 import { isStarId, STARMAP_ID } from "./starFacts.js";
 import { saveSession, type PlayerType, type SessionData } from "./session.js";
+import {
+  advanceDrift,
+  dilationFactor,
+  formatDriftMs,
+  formatUniverseAge,
+  formatUniverseAgeCompact,
+  universeAgeSeconds,
+} from "./relativity.js";
 
 // Narrates each phase of a SOLAR BASE JUMP in the HUD while WarpTransition
 // plays the visuals — see SCOPE.md's 2026-07-29 addendum.
@@ -82,11 +91,41 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
       : [`Welcome back. Resumed session ${session.sessionId}.`]
   );
   const [tick, setTick] = useState(0);
+  const lastDriftTickMsRef = useRef<number>(Date.now());
+  // Ticks every second, independent of the coarser 5s position/drift tick
+  // above — just for the always-visible HUD clock (bottom-right), so it
+  // visibly runs rather than jumping in 5s steps.
+  const [clockNow, setClockNow] = useState(() => new Date());
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), TICK_MS);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => setClockNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Accumulates real gravitational time dilation (relativity.ts) each tick,
+  // based on wherever the player is currently centered. Mid SOLAR BASE
+  // JUMP, the player isn't within any gravity well — they're in transit
+  // between systems, not standing on a body — so the factor is naturally
+  // 1 (no relativistic effect). This isn't a special-cased pause; time
+  // doesn't "freeze" during a jump, there's just nothing nearby massive
+  // enough to dilate it (SCOPE.md's 2026-07-30 addendum).
+  useEffect(() => {
+    const nowMs = Date.now();
+    const elapsedMs = nowMs - lastDriftTickMsRef.current;
+    lastDriftTickMsRef.current = nowMs;
+    const factor = transition ? 1 : dilationFactor(getDilationInputs(path[path.length - 1], new Date(nowMs)));
+    sessionRef.current.timeDriftMs = advanceDrift(sessionRef.current.timeDriftMs, elapsedMs, factor);
+    void saveSession(sessionRef.current);
+    // Deliberately keyed on `tick` alone — this should fire once per tick,
+    // reading whatever `transition`/`path` are current at that moment, not
+    // re-run whenever those change independently.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick]);
 
   function pushLog(line: string) {
     setLog((prev) => [...prev.slice(-(MAX_LOG_LINES - 1)), line]);
@@ -279,7 +318,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
     switch (cmd.toLowerCase()) {
       case "help":
         pushLog(
-          "Commands: help, back, save <text>, notes, whoami, quit. Press ~ to open the console (change player type: become llm / become human)."
+          "Commands: help, back, save <text>, notes, whoami, time, quit. Press ~ to open the console (change player type: become llm / become human)."
         );
         break;
       case "back": {
@@ -306,6 +345,14 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
       case "whoami":
         pushLog(`Session: ${sessionRef.current.sessionId}`);
         break;
+      case "time": {
+        pushLog(`Time 1 — Actual: ${now.toLocaleString()}`);
+        pushLog(`Time 2 — Universe: ${formatUniverseAge(universeAgeSeconds(now))} since the Big Bang`);
+        pushLog(
+          `Time 3 — Drift: both clocks ${formatDriftMs(sessionRef.current.timeDriftMs)} vs. actual (from time spent at ${centerLabel} — no gravity well in transit, so jumps add none)`
+        );
+        break;
+      }
       case "quit":
       case "exit":
         void saveSession(sessionRef.current).then(() => exit());
@@ -362,7 +409,11 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
               </>
             )}
           </Text>
-          {!isLeaf && !transition ? <Text dimColor>Zoom {(2 ** zoomLevel).toFixed(2)}x (+/-)</Text> : <Text> </Text>}
+          <Text dimColor>
+            {!isLeaf && !transition ? `Zoom ${(2 ** zoomLevel).toFixed(2)}x (+/-)  ` : ""}
+            {clockNow.toLocaleTimeString()} · {formatUniverseAgeCompact(universeAgeSeconds(clockNow))} ·{" "}
+            {formatDriftMs(sessionRef.current.timeDriftMs)}
+          </Text>
         </Box>
         <Text dimColor={!focused}>
           {transition

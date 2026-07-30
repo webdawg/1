@@ -13,9 +13,10 @@
  * terminal ring. Later, a node's children can come from a server instead of
  * being computed locally, without changing anything above this module.
  */
-import { daysSinceJ2000, getPlanetPositions, PLANET_ORDER, type PlanetName } from "./orbital.js";
+import { daysSinceJ2000, getPlanetPosition, getPlanetPositions, PLANET_ORDER, type PlanetName } from "./orbital.js";
 import { getMoonsOf, isMoonId, MOON_FACTS, type MoonId } from "./moonFacts.js";
 import { hasRings } from "./ringFacts.js";
+import { PLANET_FACTS } from "./planetFacts.js";
 import { ASTEROID_FACTS, getAsteroidsSortedByDistance, isAsteroidId, type AsteroidId } from "./asteroidFacts.js";
 import { BELT_FACTS, BELT_ID } from "./beltFacts.js";
 import { COMET_FACTS, COMET_ORDER, COMETS_HUB_FACTS, COMETS_HUB_ID, getCometPosition, isCometId } from "./cometFacts.js";
@@ -25,12 +26,15 @@ import {
   STAR_ORDER,
   STARMAP_FACTS,
   STARMAP_ID,
+  SUN_DIAMETER_KM,
+  SUN_GRAVITY,
   getExoplanetsOfStar,
   isExoplanetId,
   isStarId,
   type ExoplanetId,
   type ExoplanetKind,
 } from "./starFacts.js";
+import { AU_IN_METERS, type DilationInputs } from "./relativity.js";
 
 export type LeafKind = "surface" | "orbit-log" | "rings" | "notes";
 export type NodeKind =
@@ -205,6 +209,112 @@ export function getNodeKind(nodeId: string): NodeKind {
   if (isExoplanetId(nodeId)) return "exoplanet";
   const leaf = parseLeafId(nodeId);
   return leaf ? leaf.kind : "planet";
+}
+
+const NO_DILATION_INPUTS: DilationInputs = {
+  localGravity: null,
+  localRadiusM: null,
+  starGravity: null,
+  starRadiusM: null,
+  distanceFromStarM: null,
+};
+
+function radiusMFromDiameterKm(diameterKm: number): number {
+  return (diameterKm * 1000) / 2;
+}
+
+/**
+ * What a node needs for real gravitational time dilation
+ * (relativity.ts's dilationFactor) — its own local surface gravity/radius
+ * where known (a planet, or a star), plus its system star's gravity/
+ * radius and the node's real distance from it. Leaves aren't physical
+ * bodies, so they resolve through to their owner. See SPEC.md's Time
+ * section.
+ */
+export function getDilationInputs(nodeId: string, date: Date): DilationInputs {
+  const sunInputs = {
+    starGravity: SUN_GRAVITY,
+    starRadiusM: radiusMFromDiameterKm(SUN_DIAMETER_KM),
+  };
+  if (nodeId === "sun") {
+    return {
+      localGravity: SUN_GRAVITY,
+      localRadiusM: radiusMFromDiameterKm(SUN_DIAMETER_KM),
+      starGravity: null,
+      starRadiusM: null,
+      distanceFromStarM: null,
+    };
+  }
+  if (isKnownPlanet(nodeId)) {
+    const facts = PLANET_FACTS[nodeId];
+    return {
+      localGravity: facts.gravity,
+      localRadiusM: radiusMFromDiameterKm(facts.diameterKm),
+      ...sunInputs,
+      distanceFromStarM: getPlanetPosition(nodeId, date).distanceAU * AU_IN_METERS,
+    };
+  }
+  if (isMoonId(nodeId)) {
+    const parent = MOON_FACTS[nodeId].parent;
+    return {
+      localGravity: null,
+      localRadiusM: null,
+      ...sunInputs,
+      distanceFromStarM: getPlanetPosition(parent, date).distanceAU * AU_IN_METERS,
+    };
+  }
+  if (nodeId === BELT_ID) {
+    return { localGravity: null, localRadiusM: null, ...sunInputs, distanceFromStarM: BELT_FACTS.displayDistanceAU * AU_IN_METERS };
+  }
+  if (isAsteroidId(nodeId)) {
+    return {
+      localGravity: null,
+      localRadiusM: null,
+      ...sunInputs,
+      distanceFromStarM: ASTEROID_FACTS[nodeId].distanceAU * AU_IN_METERS,
+    };
+  }
+  if (nodeId === COMETS_HUB_ID) {
+    return {
+      localGravity: null,
+      localRadiusM: null,
+      ...sunInputs,
+      distanceFromStarM: COMETS_HUB_FACTS.displayDistanceAU * AU_IN_METERS,
+    };
+  }
+  if (isCometId(nodeId)) {
+    return {
+      localGravity: null,
+      localRadiusM: null,
+      ...sunInputs,
+      distanceFromStarM: getCometPosition(nodeId, date).distanceAU * AU_IN_METERS,
+    };
+  }
+  if (nodeId === STARMAP_ID) return NO_DILATION_INPUTS;
+  if (isStarId(nodeId) && nodeId !== "sun") {
+    const facts = STAR_FACTS[nodeId];
+    return {
+      localGravity: facts.gravity,
+      localRadiusM: radiusMFromDiameterKm(facts.diameterKm),
+      starGravity: null,
+      starRadiusM: null,
+      distanceFromStarM: null,
+    };
+  }
+  if (isExoplanetId(nodeId)) {
+    const facts = EXOPLANET_FACTS[nodeId];
+    const starFacts = STAR_FACTS[facts.starId];
+    return {
+      localGravity: null,
+      localRadiusM: null,
+      starGravity: starFacts.gravity,
+      starRadiusM: radiusMFromDiameterKm(starFacts.diameterKm),
+      distanceFromStarM: facts.distanceAU * AU_IN_METERS,
+    };
+  }
+  const leaf = parseLeafId(nodeId);
+  if (leaf) return getDilationInputs(leaf.owner, date);
+  return NO_DILATION_INPUTS;
 }
 
 export function getCenterLabel(nodeId: string): string {

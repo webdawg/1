@@ -101,6 +101,18 @@ system in real time/space, and eventually real objects.
       invent from scratch)
 - [ ] Ambient physics parameters at each location (light source direction,
       relative motion) — parameters only, no rendering
+- [x] Relativity / a three-times model (`SCOPE.md`'s 2026-07-30
+      addendum): actual time, universe time (seconds since the Big Bang),
+      and a continuously-accumulated relativistic drift — real
+      gravitational time dilation from Sol, all 16 curated stars, and the
+      8 planets (proper, non-linearized formula, so the curated pulsar's
+      genuinely strong-field effect comes out correct too). No
+      relativistic effect applies during a SOLAR BASE JUMP — not a
+      special-cased pause, just nothing massive nearby while in transit.
+      Surfaced via the `time` command and continuously in the HUD's
+      bottom-right corner. See `SPEC.md`'s Time section. NTP-server-backed
+      actual time, and
+      per-moon/asteroid local gravity, remain future refinements.
 
 **Done when:** the engine can represent at least one real, live external
 data feed inside the navigation model.

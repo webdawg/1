@@ -154,3 +154,34 @@ Half-Life. Take your time — make it nice.
 we need a LLM type player and to be converted to a LLM - or be a LLM you have to solve a LLM puzzle
 
 get it added, plan it, and get ready to auto execute it - make a mode to switch using some type of console that comes in from the top like half life - take your time - make it nice
+
+### 2026-07-30 — Relativity and three times
+
+**Edited for readability:**
+
+We need to implement relativity now. We have three times — the first
+time is the actual time: this is the time of the user's computer, or
+from an NTP server in the future, etc.
+
+The second time is the time of the universe, in some type of units
+humans can understand, that starts at the creation of the universe —
+the number of seconds after the Big Bang.
+
+The third time is the time state: the drift of relativity. This is
+actually going to be the same two units of time already discussed, but
+with the calculations included to account for relativity — the slowing
+and speeding up of time while we are on planets. This third time is the
+continuous relativistic calculation, as the user plays the game,
+represented as unit 1 and unit 2 as previously stated, but altered based
+on relativity. Sun transport does not alter time.
+
+Time doesn't freeze during a jump — it's just that there's no
+relativistic effect during transit.
+
+**Verbatim:**
+
+we need to implement relativity now - we have three times - the first time is the actual time - this is the time of the users computer or from a ntp server in the future - etc
+
+the second time is the time of the universe in some type of units humans can understand that starts at the creation of the universe - the number of seconds after the big bang - the third time is the time state - the drift of relativity - this is actually going to be the same two units of time that we already discussed but with the calculations to include relativity - the slowing and speeding up of time while we are on planets - this third time would be the continuous relativistic calculation as the user plays the game and represented as unit1 and unit2 as previously stated but the altered time based on relativity - sun transport does not alter time
+
+time doesnt freeze during jump - it is just that there is not relativistic effect
