@@ -167,6 +167,25 @@ touching box sizing in `SolarView.tsx`/`App.tsx` again:
   a parent's fixed-height budget depends on needs its own explicit
   narrow-width check, not just "it rendered fine in the wide dev
   terminal."
+- **Unlike the two fixes above, some `Text` content genuinely has no
+  fixed length at all — no amount of shortening a fixed string or
+  padding fixes it, because it grows with user navigation.** The HUD
+  breadcrumb's path list (`(Sun > ... > X)`) is built from `path.map`,
+  and `path` grows with how deep the player has navigated (star map >
+  star > planet > moon > leaf is already 5 real segments); it had no
+  length cap and, combined into one row with `Centered on X` and the
+  zoom indicator, corrupted the breadcrumb/Time rows at 80 columns for
+  sufficiently deep paths (reproduced with a hand-crafted session file
+  at `~/.solar-tui/sessions/*.json` and `npm start -- --resume <id>
+  <key>` — much faster than navigating a real path that deep via arrow
+  keys). Fixed by giving the path list its own dedicated row (per the
+  Time/Gravity/Velocity pattern above) *and* actively truncating it to
+  the tile's real width (`App.tsx`'s `truncateBreadcrumb`, keeping the
+  tail — the segments nearest the player's current position — prefixed
+  with an ellipsis) rather than trusting it to fit. Lesson: a dedicated
+  row alone isn't enough for content whose length isn't bounded by the
+  data model (a curated fact string, a fixed label) — anything built
+  from a growable collection needs explicit truncation too.
 - **Ad-hoc test scripts for this must live inside `tui/`** (e.g.
   `tui/scratch-repro.tsx`, delete when done) — running `npx tsx` on a file
   outside `tui/` fails with `Cannot find module 'react'` since Node

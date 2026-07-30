@@ -72,14 +72,22 @@ corner:
 - **HUD (bottom tile) — everything else.** Fixed height (`App.tsx`'s
   `BOTTOM_PANEL_HEIGHT`, grown as more rows were added — see Time,
   Gravity, and Velocity below), full width, one bordered box containing,
-  in order: the breadcrumb (`Centered on X (Sun > ... > X)`) plus the
-  zoom indicator, the Time row, the Gravity row, the Galactic Gravity
-  Constant row, the Velocity row, the log (always exactly
-  `MAX_LOG_LINES` rows, padded with a single space rather than an empty
-  string so padding rows don't collapse to zero height — see
+  in order: the breadcrumb, split across two rows — `Centered on X` plus
+  the zoom indicator on the first, and the path list (`(Sun > ... > X)`)
+  on its own dedicated row below; the Time row, the Gravity row, the
+  Galactic Gravity Constant row, the Velocity row, the log (always
+  exactly `MAX_LOG_LINES` rows, padded with a single space rather than
+  an empty string so padding rows don't collapse to zero height — see
   `DEVELOPMENT.md`), the command prompt, and finally the `HUD` label
   (right-aligned, the tile's actual last row so it lands in the literal
-  bottom-right corner rather than floating above the prompt).
+  bottom-right corner rather than floating above the prompt). Unlike
+  every other row here, the path list has no natural length cap — it
+  grows with navigation depth (star map > star > planet > moon > leaf is
+  already 5 segments) — so it's truncated to the tile's actual width
+  (`App.tsx`'s `truncateBreadcrumb`) rather than just given a row and
+  trusted to fit: it keeps the tail (the segments closest to the
+  player's current position — the most relevant ones) and prefixes an
+  ellipsis when the full path doesn't fit.
 
 Position math for the top tile lives in one place — `layout.ts`'s
 `computeGridPositions` — used both by `SolarView` for rendering and by

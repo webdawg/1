@@ -57,6 +57,21 @@ const PHASE_MESSAGES: Record<TransitionPhase, (label: string) => string> = {
   traveling: () => "SOLAR BASE JUMP in progress — quantum data drifting past...",
 };
 
+/**
+ * The breadcrumb's path list grows with navigation depth (star map > star >
+ * planet > moon > leaf can get long) and has no natural cap — unlike this
+ * codebase's other HUD text, it can't just be given a dedicated row and
+ * trusted to fit. Truncates from the front, keeping the tail (the segments
+ * closest to the player's current position — the most relevant ones) and
+ * prefixing an ellipsis, so the row never exceeds the tile's actual width
+ * regardless of how deep the path gets.
+ */
+function truncateBreadcrumb(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  if (maxChars <= 1) return "…";
+  return `…${text.slice(text.length - (maxChars - 1))}`;
+}
+
 const TICK_MS = 5000;
 const MAX_LOG_LINES = 4;
 
@@ -67,12 +82,18 @@ const MAX_LOG_LINES = 4;
 // dedicated row rather than sharing the breadcrumb row's right-hand
 // corner — cramming everything into one row wrapped at 80 columns (a
 // completely ordinary terminal width), which silently overflows this
-// box's fixed height (overflow="hidden"). The "HUD" tile label is its own
-// row too, placed after the Prompt so it lands on the tile's literal
-// bottom-right corner rather than floating above the input row.
+// box's fixed height (overflow="hidden"). The breadcrumb's own path list
+// (Sun > ... > X) is its own row too, below the "Centered on X" line —
+// unlike the other rows, its content genuinely has no fixed length (it
+// grows with navigation depth), so it's also truncated to the tile's
+// actual width (see truncateBreadcrumb below) rather than just given
+// room and hoped to fit. The "HUD" tile label is its own row too, placed
+// after the Prompt so it lands on the tile's literal bottom-right corner
+// rather than floating above the input row.
 const BOTTOM_PANEL_HEIGHT =
   2 /* border */ +
-  1 /* breadcrumb */ +
+  1 /* breadcrumb: "Centered on X" */ +
+  1 /* breadcrumb: path list, truncated to width */ +
   1 /* time */ +
   1 /* gravity */ +
   1 /* galactic gravity constant formula */ +
@@ -475,12 +496,16 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
             ) : (
               <>
                 Centered on <Text bold>{centerLabel}</Text>
-                {path.length > 1 ? `  (${path.map(getBreadcrumbLabel).join(" > ")})` : ""}
               </>
             )}
           </Text>
           {!isLeaf && !transition ? <Text dimColor>Zoom {(2 ** zoomLevel).toFixed(2)}x (+/-)</Text> : <Text> </Text>}
         </Box>
+        <Text dimColor>
+          {!transition && path.length > 1
+            ? truncateBreadcrumb(`(${path.map(getBreadcrumbLabel).join(" > ")})`, cols - 4)
+            : " "}
+        </Text>
         <Text dimColor>
           Time: {clockNow.toLocaleTimeString()} · {formatUniverseAgeCompact(universeAgeSeconds(clockNow))} ·{" "}
           {formatDriftMs(sessionRef.current.timeDriftMs)}

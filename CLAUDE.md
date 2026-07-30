@@ -267,11 +267,21 @@ budgeted row count once the empty-string bug above stopped masking it
 both wide and 80-column widths across `SolarView`, a leaf `ContentView`
 (including nested-card leaves), `Console`, and mid-`WarpTransition`.
 
-Flagged but not fixed (pre-existing, unrelated to the above): the HUD
-breadcrumb row's `(Sun > ... > X)` path suffix has no length limit and
-overflows/corrupts at 80 columns for sufficiently deep paths (e.g.
-`Nearby Stars > Sun > Mercury > Orbit Log`) — confirmed present on the
-prior commit too, not introduced this session.
+Also fixed this session: the breadcrumb path truncation flagged (but not
+fixed) last session. The HUD breadcrumb's `(Sun > ... > X)` path list has
+no natural length cap — it grows with navigation depth — and was
+corrupting the breadcrumb/Time rows at 80 columns for sufficiently deep
+paths. Fixed with two changes: the path list moved to its own dedicated
+row (previously crammed alongside `Centered on X` and the zoom
+indicator), and it's now actively truncated to the tile's real width
+(`App.tsx`'s `truncateBreadcrumb`, keeping the segments nearest the
+player's current position, prefixed with an ellipsis when it doesn't
+fit) rather than just given room and trusted to fit. Verified via a
+hand-crafted session file (`~/.solar-tui/sessions/*.json` +
+`--resume`) forcing a path deep enough to actually trigger truncation —
+faster and more reliable than navigating that deep via arrow keys — plus
+the real 5-segment case (a moon's Surface leaf) and the original
+4-segment repro, at both 80 and wide columns.
 
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,
