@@ -91,7 +91,10 @@ system in real time/space, and eventually real objects.
       live coordinate system or real object feed yet.
 - [ ] Universal coordinate system anchored to a defined origin, factoring
       in galactic motion + time + Earth position (time-based galactic
-      position)
+      position) — a first real number toward this landed alongside
+      Gravity below: a fixed real distance from the Sun to the galactic
+      center. Actual galactic position/motion (not just a static
+      distance) remains open.
 - [ ] Support for additional "dimensional spaces" with near-password-grade
       unique IDs
 - [ ] Read-only access to real fixed/moving object feeds (cameras,
@@ -109,10 +112,25 @@ system in real time/space, and eventually real objects.
       genuinely strong-field effect comes out correct too). No
       relativistic effect applies during a SOLAR BASE JUMP — not a
       special-cased pause, just nothing massive nearby while in transit.
-      Surfaced via the `time` command and continuously in the HUD's
-      bottom-right corner. See `SPEC.md`'s Time section. NTP-server-backed
-      actual time, and
+      Surfaced via the `time` command and continuously on its own HUD row.
+      See `SPEC.md`'s Time section. NTP-server-backed actual time, and
       per-moon/asteroid local gravity, remain future refinements.
+- [x] Current gravity in the HUD (`SCOPE.md`'s 2026-07-30 addendum): a
+      dedicated always-visible row showing real local (current body's own
+      surface gravity), star (the system star's pull at the real current
+      distance), and galactic (a fixed real constant, from the Sun's real
+      distance/orbital speed around the galactic center) acceleration in
+      m/s². See `SPEC.md`'s Gravity section. Not yet wired into the
+      relativity drift calculation — display-only for now.
+- [x] Orbital velocity in the HUD: a dedicated row alongside Gravity,
+      the real circular velocity (`v = √(GM/d)`) for the same three
+      sources — local (surface circular velocity), star (real orbital
+      speed around the current system's star), galactic (the fixed
+      220 km/s constant). Sanity-checked against famous real numbers
+      (Earth's ~7.9 km/s low-orbit and ~29.6-29.8 km/s solar orbit); the
+      curated pulsar's local term is genuinely relativistic (~43% c),
+      shown as a percent of light speed rather than an unwieldy km/s
+      figure. See `SPEC.md`'s Velocity section.
 
 **Done when:** the engine can represent at least one real, live external
 data feed inside the navigation model.

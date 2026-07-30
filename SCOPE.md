@@ -185,3 +185,16 @@ we need to implement relativity now - we have three times - the first time is th
 the second time is the time of the universe in some type of units humans can understand that starts at the creation of the universe - the number of seconds after the big bang - the third time is the time state - the drift of relativity - this is actually going to be the same two units of time that we already discussed but with the calculations to include relativity - the slowing and speeding up of time while we are on planets - this third time would be the continuous relativistic calculation as the user plays the game and represented as unit1 and unit2 as previously stated but the altered time based on relativity - sun transport does not alter time
 
 time doesnt freeze during jump - it is just that there is not relativistic effect
+
+### 2026-07-30 — Current gravity and galactic distance
+
+**Edited for readability:**
+
+We need to add current gravity to the HUD — solar system gravity, and
+planet gravity. There should also be a gravitational constant that is
+calculated from the distance from the center of the galaxy to the
+current position in the galaxy — we just need to know distance for now.
+
+**Verbatim:**
+
+we need to add current gravity to the hud - solar system, and planet gravity - there should also be a gravitional constant that is calculated from the distance from the center of the galaxy to the current position in the galaxy - we just need to know distance for now

@@ -122,6 +122,21 @@ touching box sizing in `SolarView.tsx`/`App.tsx` again:
   `gridWidth + 4`, not `+ 2`; the undersized version silently blanked the
   input row's border every time, found via tmux capture-pane, not by any
   error/warning.
+- **A `Box` row without an explicit `width` (e.g. a flex row inside the
+  bottom panel) doesn't silently corrupt a border the way the above
+  does, but its `Text` children still wrap when their combined content
+  exceeds the parent's actual width — and if that row lives inside a box
+  with a fixed `height` + `overflow="hidden"` (the bottom panel), the
+  extra wrapped line still has to go *somewhere*, silently overflowing
+  the fixed row budget and pushing/clipping whatever's below it (log
+  lines, the prompt).** Found when the HUD's Time row (added to the
+  breadcrumb row's right-hand corner, alongside the zoom indicator) only
+  ever got tested in this session's default wide (220-column) tmux
+  windows — it wrapped at a completely ordinary 80 columns. Test HUD/
+  bottom-panel changes at 80 columns specifically, not just whatever
+  width the dev tmux session happens to default to; the fix here was
+  giving Time (and later Gravity) each their own dedicated row instead
+  of sharing space in a already-busy corner.
 - **Ad-hoc test scripts for this must live inside `tui/`** (e.g.
   `tui/scratch-repro.tsx`, delete when done) — running `npx tsx` on a file
   outside `tui/` fails with `Cannot find module 'react'` since Node

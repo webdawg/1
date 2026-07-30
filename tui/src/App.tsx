@@ -35,8 +35,15 @@ import {
   advanceDrift,
   dilationFactor,
   formatDriftMs,
+  formatGravity,
   formatUniverseAge,
   formatUniverseAgeCompact,
+  formatVelocity,
+  GALACTIC_CENTER_DISTANCE_LY,
+  GALACTIC_GRAVITY_MPS2,
+  GALACTIC_ORBITAL_SPEED_MPS,
+  gravityAtDistance,
+  orbitalVelocityAtDistance,
   universeAgeSeconds,
 } from "./relativity.js";
 
@@ -56,7 +63,19 @@ const MAX_LOG_LINES = 4;
 // Bottom panel content budget, fixed regardless of what's actually in the
 // log this frame (log rows are always padded to MAX_LOG_LINES) — this is
 // what makes the top/bottom split arithmetic below deterministic.
-const BOTTOM_PANEL_HEIGHT = 2 /* border */ + 1 /* breadcrumb */ + 1 /* focused-body info */ + MAX_LOG_LINES + 3 /* Prompt's own border+row */;
+// Time and Gravity each get their own dedicated row rather than sharing
+// the breadcrumb row's right-hand corner — cramming everything into one
+// row wrapped at 80 columns (a completely ordinary terminal width),
+// which silently overflows this box's fixed height (overflow="hidden").
+const BOTTOM_PANEL_HEIGHT =
+  2 /* border */ +
+  1 /* breadcrumb */ +
+  1 /* time */ +
+  1 /* gravity */ +
+  1 /* velocity */ +
+  1 /* focused-body info */ +
+  MAX_LOG_LINES +
+  3 /* Prompt's own border+row */;
 const MIN_GRID_WIDTH = 20;
 const MIN_GRID_HEIGHT = 5;
 const MIN_TOP_HEIGHT = MIN_GRID_HEIGHT + 2;
@@ -155,6 +174,20 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
   const now = useMemo(() => new Date(), [tick]);
   const centerId = path[path.length - 1];
+  const dilationInputs = useMemo(() => getDilationInputs(centerId, now), [centerId, now]);
+  const localGravityMps2 = dilationInputs.localGravity;
+  const starGravityMps2 =
+    dilationInputs.starGravity !== null && dilationInputs.starRadiusM !== null && dilationInputs.distanceFromStarM !== null
+      ? gravityAtDistance(dilationInputs.starGravity, dilationInputs.starRadiusM, dilationInputs.distanceFromStarM)
+      : null;
+  const localVelocityMps =
+    dilationInputs.localGravity !== null && dilationInputs.localRadiusM !== null
+      ? orbitalVelocityAtDistance(dilationInputs.localGravity, dilationInputs.localRadiusM, dilationInputs.localRadiusM)
+      : null;
+  const starVelocityMps =
+    dilationInputs.starGravity !== null && dilationInputs.starRadiusM !== null && dilationInputs.distanceFromStarM !== null
+      ? orbitalVelocityAtDistance(dilationInputs.starGravity, dilationInputs.starRadiusM, dilationInputs.distanceFromStarM)
+      : null;
   const centerLabel = getCenterLabel(centerId);
   const centerKind = getNodeKind(centerId);
   const isLeaf = centerKind === "surface" || centerKind === "orbit-log" || centerKind === "rings" || centerKind === "notes";
@@ -409,12 +442,20 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
               </>
             )}
           </Text>
-          <Text dimColor>
-            {!isLeaf && !transition ? `Zoom ${(2 ** zoomLevel).toFixed(2)}x (+/-)  ` : ""}
-            {clockNow.toLocaleTimeString()} · {formatUniverseAgeCompact(universeAgeSeconds(clockNow))} ·{" "}
-            {formatDriftMs(sessionRef.current.timeDriftMs)}
-          </Text>
+          {!isLeaf && !transition ? <Text dimColor>Zoom {(2 ** zoomLevel).toFixed(2)}x (+/-)</Text> : <Text> </Text>}
         </Box>
+        <Text dimColor>
+          Time: {clockNow.toLocaleTimeString()} · {formatUniverseAgeCompact(universeAgeSeconds(clockNow))} ·{" "}
+          {formatDriftMs(sessionRef.current.timeDriftMs)}
+        </Text>
+        <Text dimColor>
+          Gravity (m/s²): local {formatGravity(localGravityMps2)}, star {formatGravity(starGravityMps2)}, galactic{" "}
+          {formatGravity(GALACTIC_GRAVITY_MPS2)}
+        </Text>
+        <Text dimColor>
+          Velocity: local {formatVelocity(localVelocityMps)}, star {formatVelocity(starVelocityMps)}, galactic{" "}
+          {formatVelocity(GALACTIC_ORBITAL_SPEED_MPS)}
+        </Text>
         <Text dimColor={!focused}>
           {transition
             ? ""

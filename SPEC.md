@@ -395,7 +395,7 @@ though the departure star's own dilation would otherwise contribute
 measurably over that many seconds.
 
 **Display**: `App.tsx`'s bottom panel shows all three times *continuously*
-in the bottom-right HUD corner (not just via `time`) — actual time
+on their own dedicated row (not just via `time`) — actual time
 (`HH:MM:SS`, ticking every second off its own dedicated `clockNow`
 interval, deliberately separate from the coarser 5s position/drift tick
 so the clock visibly runs), a compact universe age
@@ -403,9 +403,68 @@ so the clock visibly runs), a compact universe age
 years/days/H:M:S breakdown is `formatUniverseAge`, reserved for the
 `time` command's more detailed output), and the current drift
 (`formatDriftMs`, read directly off `sessionRef.current.timeDriftMs`).
-Visible on every screen, including leaf views and mid-jump — where the
-zoom indicator that shares that corner is conditionally hidden, the
-three times still show.
+Visible on every screen, including leaf views and mid-jump. This row
+originally shared the breadcrumb row's right-hand corner with the zoom
+indicator; that wrapped at 80 columns (an entirely ordinary terminal
+width) and silently overflowed the bottom panel's fixed, `overflow:
+hidden` height, so it was moved to its own row — see Gravity below,
+which follows the same one-row-per-concern shape.
+
+## Gravity
+
+Alongside Time, the bottom panel has a dedicated Gravity row, always
+visible, showing three real accelerations in m/s² (`formatGravity`,
+auto-scaled between fixed and scientific notation — these span ~1e-10 to
+~1e12): **local** (the current node's own surface gravity —
+`dilationInputs.localGravity` directly, `—` where unknown, e.g. moons/
+asteroids/comets/the star map), **star** (the pull of the current
+system's star at the node's real distance —
+`relativity.ts`'s `gravityAtDistance(starGravity, starRadiusM,
+distanceFromStarM)`, Newtonian `GM/d²` using the same `GM = gravity *
+radius²` construction `dilationFactor` uses; `—` when centered on the
+star itself, where distance is undefined), and **galactic** (a fixed
+constant — see below). Sanity-checked against real physics: Venus reads
+`local 8.870` (its real catalog surface gravity) and `star 0.011`,
+matching `GM_sun/d²` at Venus's real 0.73 AU.
+
+**Galactic**: `relativity.ts`'s `GALACTIC_GRAVITY_MPS2`, from
+`SCOPE.md`'s 2026-07-30 addendum ("a gravitational constant... from the
+distance from the center of the galaxy... we just need to know distance
+for now"). Rather than modeling the galaxy's actual (non-point-mass)
+enclosed mass distribution, it's derived from two real, independently
+curated numbers — the Sun's real distance from the galactic center
+(`GALACTIC_CENTER_DISTANCE_LY`, ~26,673 ly, GRAVITY collaboration 2019)
+and its real orbital speed around it (220 km/s, IAU 1985 recommended
+value) — as centripetal acceleration, `v²/r`. A fixed background
+constant for now: the engine doesn't yet model galactic position or
+motion (`ROADMAP.md` Phase 5), and AU-scale movement within a star
+system is negligible at this distance regardless. Not yet fed into
+`dilationFactor`/drift accumulation — display-only until that's wired up.
+
+## Velocity
+
+A fourth dedicated row, directly below Gravity, showing real circular
+orbital velocities (`relativity.ts`'s `orbitalVelocityAtDistance`,
+`v = √(GM/d)`) for the same three sources Gravity does, formatted in
+km/s (`formatVelocity`) except genuinely relativistic cases (≥10,000
+km/s — only the curated pulsar reaches this), which switch to a percent
+of light speed instead of an unwieldy six-digit km/s figure: **local**
+(the current body's own surface circular velocity, i.e. the "first
+cosmic velocity" — pass its own radius as the distance), **star** (the
+node's real orbital velocity around its system's star, at its real
+distance), and **galactic** (`GALACTIC_ORBITAL_SPEED_MPS`, the fixed
+220 km/s constant Gravity's galactic term is itself derived from).
+Sanity-checked against real, famous numbers: Earth's local reads
+`7.906 km/s` (real low-Earth-orbit velocity) and its star reads
+`~29.6 km/s` (Earth's well-known real solar orbital velocity, ~29.78
+km/s at exactly 1 AU); the Sun's own local reads `436.697 km/s`
+(matches its real surface escape velocity, 617.5 km/s, divided by √2);
+the curated pulsar's local reads `~42.85% c`, a genuinely relativistic
+value consistent with its strong-field dilation factor (`SPEC.md`'s
+Time section) — a reminder that this is the classical `v = √(GM/d)`
+approximation everywhere (the same simplification the engine already
+uses for moon/asteroid/exoplanet positions), not a relativistically
+corrected velocity.
 
 ## Session model
 

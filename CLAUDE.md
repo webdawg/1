@@ -121,11 +121,16 @@ purpose shifts or a new one is added.
   former gates on a 5-round token-prediction puzzle. See `SPEC.md`'s
   Console section for the full mechanic and command list.
 - `src/relativity.ts` — pure physics/math, no React: real gravitational
-  time dilation (`dilationFactor`, the proper non-linearized formula) and
-  the "seconds since the Big Bang" universe clock. `worldTree.ts`'s
-  `getDilationInputs` maps a node id to what this needs; `App.tsx`
-  accumulates it each tick into `session.ts`'s persisted `timeDriftMs`,
-  surfaced via the `time` command. See `SPEC.md`'s Time section.
+  time dilation (`dilationFactor`, the proper non-linearized formula), the
+  "seconds since the Big Bang" universe clock, real gravitational
+  acceleration (`gravityAtDistance`, plus the fixed `GALACTIC_GRAVITY_MPS2`
+  constant), and real circular orbital velocity (`orbitalVelocityAtDistance`,
+  plus the fixed `GALACTIC_ORBITAL_SPEED_MPS` constant `GALACTIC_GRAVITY_MPS2`
+  is itself derived from). `worldTree.ts`'s `getDilationInputs` maps a node
+  id to what this needs; `App.tsx` accumulates drift each tick into
+  `session.ts`'s persisted `timeDriftMs`, surfaced via the `time` command
+  and continuously on the HUD's Time/Gravity/Velocity rows. See
+  `SPEC.md`'s Time, Gravity, and Velocity sections.
 
 Run it: `cd tui && npm install && npm start`
 Typecheck: `cd tui && npm run typecheck`
@@ -177,9 +182,9 @@ silently corrupted the input row's rendering.
 Added this session: real gravitational time dilation (`relativity.ts`),
 surfaced as a three-times model — actual time, universe time (seconds
 since the Big Bang), and a persisted, continuously-accumulating drift
-between the two — both via the `time` command and now permanently in
-the HUD's bottom-right corner (its own 1s-interval `clockNow`, separate
-from the coarser 5s position/drift tick, so it visibly runs). Real
+between the two — both via the `time` command and now permanently on
+its own HUD row (its own 1s-interval `clockNow`, separate from the
+coarser 5s position/drift tick, so it visibly runs). Real
 `gravity`/`diameterKm` data was added for the Sun and all 16 curated
 stars (not just the 8 planets, which already had it) so every system
 produces genuine dilation, including a dramatic real strong-field case
@@ -191,6 +196,25 @@ massive nearby while in transit between systems (`SCOPE.md`'s
 2026-07-30 addendum: "time doesn't freeze during a jump — it's just
 that there's no relativistic effect during transit"), verified via a
 precisely-timed tmux test bracketing an entire jump.
+
+Also added this session: a Gravity HUD row alongside Time — real local
+(current body's surface gravity), star (the system star's pull at the
+real current distance, `relativity.ts`'s `gravityAtDistance`), and
+galactic (a fixed real constant derived from the Sun's real distance and
+orbital speed around the galactic center, `GALACTIC_GRAVITY_MPS2`)
+acceleration in m/s². Along the way, found and fixed a real width-budget
+bug the Time row had introduced: cramming Time into the breadcrumb row's
+right-hand corner wrapped at 80 columns (an entirely ordinary terminal
+width) and silently overflowed the bottom panel's fixed height — caught
+via a deliberate narrow-terminal tmux check, not by the wide (220-col)
+terminal this session had been testing in by default. Fixed by giving
+Time and Gravity each their own dedicated row instead of sharing space.
+Also added a Velocity row right alongside Gravity, the real circular
+orbital velocity (`v = √(GM/d)`) for the same three sources — verified
+against famous real numbers (Earth's ~7.9 km/s low-orbit and ~29.6-29.8
+km/s solar orbit, the Sun's own ~436.7 km/s surface velocity matching
+its real escape velocity ÷ √2); the curated pulsar's local term comes
+out genuinely relativistic (~43% c), shown as a percent of light speed.
 
 Nothing in-progress/uncommitted right now — check `ROADMAP.md` Phase 2 for
 what's next (dwarf planets, bots/NPCs, BBS-style messages, tests).

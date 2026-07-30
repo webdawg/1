@@ -4,6 +4,20 @@
 
 export const SPEED_OF_LIGHT_MPS = 299_792_458;
 export const AU_IN_METERS = 149_597_870_700;
+export const LY_IN_METERS = 9_460_730_472_580_800;
+
+// Real distance from the Sun to the galactic center (GRAVITY collaboration,
+// 2019: ~8.178 kpc) and the Sun's real orbital speed around it (IAU 1985
+// recommended value, ~220 km/s) — together giving a real centripetal
+// acceleration (v²/r) toward the galactic center, without needing to model
+// the galaxy's actual (non-point-mass) enclosed mass distribution. We're
+// not modeling galactic position/motion yet ("we just need to know
+// distance for now" — SCOPE.md's 2026-07-30 addendum), so this is treated
+// as a fixed background constant rather than something that varies with
+// in-system position, which is negligible at this scale anyway.
+export const GALACTIC_CENTER_DISTANCE_LY = 26_673;
+export const GALACTIC_ORBITAL_SPEED_MPS = 220_000;
+export const GALACTIC_GRAVITY_MPS2 = GALACTIC_ORBITAL_SPEED_MPS ** 2 / (GALACTIC_CENTER_DISTANCE_LY * LY_IN_METERS);
 
 const SECONDS_PER_JULIAN_YEAR = 365.25 * 24 * 3600;
 
@@ -92,6 +106,32 @@ export function dilationFactor(inputs: DilationInputs): number {
 /** currentDriftMs plus this tick's contribution: elapsed real time scaled by how far factor is from 1 (no drift). */
 export function advanceDrift(currentDriftMs: number, elapsedRealMs: number, factor: number): number {
   return currentDriftMs + elapsedRealMs * (factor - 1);
+}
+
+/** Newtonian gravitational acceleration (m/s²) at distanceM from a mass with the given surface gravity/radius — same GM = gravity*radius² approach dilationFactor uses. */
+export function gravityAtDistance(surfaceGravity: number, surfaceRadiusM: number, distanceM: number): number {
+  const gm = surfaceGravity * surfaceRadiusM * surfaceRadiusM;
+  return gm / (distanceM * distanceM);
+}
+
+/** A gravitational acceleration in m/s², auto-scaled to whichever notation reads best — these range from ~1e-10 (galactic) to ~1e12 (the curated pulsar's surface). */
+export function formatGravity(mps2: number | null): string {
+  if (mps2 === null) return "—";
+  if (mps2 >= 0.01 && mps2 < 100_000) return mps2.toFixed(3);
+  return mps2.toExponential(3);
+}
+
+/** Circular orbital velocity (m/s) at distanceM from a mass with the given surface gravity/radius — v = √(GM/d). Pass the body's own radius as distanceM for its own surface circular velocity (the "first cosmic velocity"). */
+export function orbitalVelocityAtDistance(surfaceGravity: number, surfaceRadiusM: number, distanceM: number): number {
+  const gm = surfaceGravity * surfaceRadiusM * surfaceRadiusM;
+  return Math.sqrt(gm / distanceM);
+}
+
+/** A velocity in m/s, shown in km/s (matching how real astronomy usually states orbital speeds) — switches to a fraction of light speed for genuinely relativistic cases (the curated pulsar's surface is ~43% c). */
+export function formatVelocity(mps: number | null): string {
+  if (mps === null) return "—";
+  if (mps >= 10_000_000) return `${((mps / SPEED_OF_LIGHT_MPS) * 100).toFixed(2)}% c`;
+  return `${(mps / 1000).toFixed(3)} km/s`;
 }
 
 /** A signed duration, auto-scaled to whichever unit reads best — drift ranges from nanoseconds (Earth) to seconds (the pulsar). */
