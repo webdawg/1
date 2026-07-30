@@ -41,22 +41,33 @@ Position math, by category:
 
 ## Layout
 
-Two full-width tiles, stacked vertically:
+Two full-width tiles, stacked vertically, each with an official name
+shown as a dim label in its own bottom-right corner:
 
-- **Top tile — the universe.** Dynamically sized to fill the actual
-  terminal window (Ink's `useWindowSize`, reacting live to resize).
-  Bordered box containing *only* plotted icon+label pairs — no other
-  text. Swapped for `ContentView`'s leaf detail screen when centered on a
-  leaf node.
-- **Bottom tile — everything else.** Fixed height (11 rows), full width,
-  bordered box containing, in order: the breadcrumb (`Centered on X (Sun
-  > ... > X)`), one line of the currently-focused entry's quick info
-  (`CATEGORY - label — N o'clock, distance` — the all-caps category
-  prefix is `worldTree.ts`'s `getCategoryLabel`, e.g. `PLANET - Earth`,
-  `STAR - TRAPPIST-1`, `EXOPLANET - TRAPPIST-1 b`; updates live as focus
-  moves, unlike the breadcrumb which only changes on travel), the log
-  (always exactly `MAX_LOG_LINES` rows, blank-padded so the panel's
-  height never varies with content), and the command prompt.
+- **NAVIGATION (top tile) — the universe.** Dynamically sized to fill
+  the actual terminal window (Ink's `useWindowSize`, reacting live to
+  resize). Its main area is a bordered box containing *only* plotted
+  icon+label pairs — no other text (swapped for `ContentView`'s leaf
+  detail screen, or `Console`, when applicable). Below that — inside the
+  same tile, but outside that nested box's own border — a footer row:
+  the currently-focused entry's quick info, centered (`CATEGORY - label
+  — N o'clock, distance` — the all-caps category prefix is
+  `worldTree.ts`'s `getCategoryLabel`, e.g. `PLANET - Earth`, `STAR -
+  TRAPPIST-1`, `EXOPLANET - TRAPPIST-1 b`; updates live as focus moves,
+  blanked mid-transition), and the `NAVIGATION` label, right-aligned.
+  This footer used to live in the HUD tile; moved here so it's paired
+  with what it's actually describing.
+- **HUD (bottom tile) — everything else.** Fixed height (`App.tsx`'s
+  `BOTTOM_PANEL_HEIGHT`, grown as more rows were added — see Time,
+  Gravity, and Velocity below), full width, bordered box containing, in
+  order: the breadcrumb (`Centered on X (Sun > ... > X)`) plus the zoom
+  indicator, the Time row, the Gravity row, the Galactic Gravity
+  Constant row, the Velocity row, the log (always exactly
+  `MAX_LOG_LINES` rows, blank-padded so the panel's height never varies
+  with content), the `HUD` label (right-aligned, its own row directly
+  above the prompt — as close to "bottom-right corner" as achievable
+  without either embedding it in the log's dynamic content or coupling
+  it into `Prompt.tsx`'s own bordered box), and the command prompt.
 
 Position math for the top tile lives in one place — `layout.ts`'s
 `computeGridPositions` — used both by `SolarView` for rendering and by
@@ -66,7 +77,11 @@ where something is.
 **Known constraint:** `SolarView`'s box has a border (2 cols) and
 `paddingX={1}` (2 more cols) — `gridWidth` must subtract all 4, not just
 the border. Getting this wrong doesn't error; it silently corrupts the
-box's bottom border in this Ink version. See `DEVELOPMENT.md`.
+box's bottom border in this Ink version. See `DEVELOPMENT.md`. The same
+document also covers a related but distinct pitfall: cramming too much
+into one HUD row can silently wrap and overflow the fixed-height bottom
+tile even without any width-math bug, which is why Time/Gravity/
+Velocity each get their own dedicated row rather than sharing space.
 
 ## Zoom
 
@@ -441,10 +456,25 @@ motion (`ROADMAP.md` Phase 5), and AU-scale movement within a star
 system is negligible at this distance regardless. Not yet fed into
 `dilationFactor`/drift accumulation — display-only until that's wired up.
 
+**Galactic Gravity Constant**: a second, distinct row, directly below
+Gravity — `SCOPE.md`'s 2026-07-30 addendum, which asked for "two types
+of gravity": Gravity above is what the three sources are *individually*;
+this is their sum, shown as the literal running formula rather than
+collapsed to just the total (`relativity.ts`'s `formatGravityFormula`) —
+`{galactic} + {star} + {local} = {sum}` m/s², null terms contributing 0.
+Explicitly **not** meant to represent anything actually felt — real
+gravity doesn't compound additively like this (each term already has
+its own distance falloff baked in, and standing on a planet you
+obviously don't perceive the Sun's or the galaxy's pull as weight). It's
+a raw building block reserved for a later calculation, not a physical
+quantity in its own right — which is also why the formula (not just the
+number) stays visible: the point is seeing the terms and how wildly
+they're scaled relative to each other, not the sum itself.
+
 ## Velocity
 
-A fourth dedicated row, directly below Gravity, showing real circular
-orbital velocities (`relativity.ts`'s `orbitalVelocityAtDistance`,
+Another dedicated row, directly below the Galactic Gravity Constant,
+showing real circular orbital velocities (`relativity.ts`'s `orbitalVelocityAtDistance`,
 `v = √(GM/d)`) for the same three sources Gravity does, formatted in
 km/s (`formatVelocity`) except genuinely relativistic cases (≥10,000
 km/s — only the curated pulsar reaches this), which switch to a percent

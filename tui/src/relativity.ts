@@ -134,6 +134,26 @@ export function formatVelocity(mps: number | null): string {
   return `${(mps / 1000).toFixed(3)} km/s`;
 }
 
+/**
+ * The "Galactic Gravity Constant" — every gravitational acceleration
+ * acting on the player's current position, added up as one chain: the
+ * galaxy's pull (fixed, from its central mass) + the system star's pull
+ * at the real current distance + the current object's own surface
+ * gravity (null terms count as 0, e.g. no star term when centered on the
+ * star itself). Not a "felt" sensation — real gravity doesn't compound
+ * additively like this in practice (each term already includes its own
+ * distance falloff, and you wouldn't perceive the galaxy's or the Sun's
+ * pull as weight while standing on a planet) — this is a raw building
+ * block for a later calculation, kept as an explicit formula rather than
+ * just the total so the terms (and how differently-scaled they are)
+ * stay visible. Distinct from the individual local/star/galactic
+ * readings on the Gravity row, which this sums.
+ */
+export function formatGravityFormula(galaxyMps2: number, starMps2: number | null, localMps2: number | null): string {
+  const sum = galaxyMps2 + (starMps2 ?? 0) + (localMps2 ?? 0);
+  return `${formatGravity(galaxyMps2)} + ${formatGravity(starMps2)} + ${formatGravity(localMps2)} = ${formatGravity(sum)}`;
+}
+
 /** A signed duration, auto-scaled to whichever unit reads best — drift ranges from nanoseconds (Earth) to seconds (the pulsar). */
 export function formatDriftMs(ms: number): string {
   if (ms === 0) return "0s";

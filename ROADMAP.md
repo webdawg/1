@@ -121,7 +121,10 @@ system in real time/space, and eventually real objects.
       distance), and galactic (a fixed real constant, from the Sun's real
       distance/orbital speed around the galactic center) acceleration in
       m/s². See `SPEC.md`'s Gravity section. Not yet wired into the
-      relativity drift calculation — display-only for now.
+      relativity drift calculation — display-only for now. A second,
+      distinct row — the Galactic Gravity Constant — sums those same
+      three sources and shows the running formula; not a felt quantity,
+      a raw building block reserved for a later calculation.
 - [x] Orbital velocity in the HUD: a dedicated row alongside Gravity,
       the real circular velocity (`v = √(GM/d)`) for the same three
       sources — local (surface circular velocity), star (real orbital

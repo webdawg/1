@@ -63,8 +63,10 @@ purpose shifts or a new one is added.
 
 - `src/index.tsx` — entry point, session bootstrap.
 - `src/App.tsx` — main loop: arrow-key navigation, `/`-command mode
-  (`help`, `back`, `save <text>`, `notes`, `whoami`, `quit`), local session
-  persistence via `session.ts`.
+  (`help`, `back`, `save <text>`, `notes`, `whoami`, `time`, `quit`), local
+  session persistence via `session.ts`. Renders the two official tiles,
+  each labeled in its own bottom-right corner: NAVIGATION (top) and HUD
+  (bottom) — see `SPEC.md`'s Layout section.
 - `src/worldTree.ts` — the core model. Given a node id, returns what orbits
   it (`getOrbitChildren`), plus id classification/labeling helpers
   (`getNodeKind`, `getCenterLabel`, `getBreadcrumbLabel`, `getDistanceDomain`).
@@ -124,11 +126,14 @@ purpose shifts or a new one is added.
   time dilation (`dilationFactor`, the proper non-linearized formula), the
   "seconds since the Big Bang" universe clock, real gravitational
   acceleration (`gravityAtDistance`, plus the fixed `GALACTIC_GRAVITY_MPS2`
-  constant), and real circular orbital velocity (`orbitalVelocityAtDistance`,
-  plus the fixed `GALACTIC_ORBITAL_SPEED_MPS` constant `GALACTIC_GRAVITY_MPS2`
-  is itself derived from). `worldTree.ts`'s `getDilationInputs` maps a node
-  id to what this needs; `App.tsx` accumulates drift each tick into
-  `session.ts`'s persisted `timeDriftMs`, surfaced via the `time` command
+  constant, and `formatGravityFormula` for the summed "Galactic Gravity
+  Constant" — not a felt quantity, a building block for a later
+  calculation), and real circular orbital velocity
+  (`orbitalVelocityAtDistance`, plus the fixed `GALACTIC_ORBITAL_SPEED_MPS`
+  constant `GALACTIC_GRAVITY_MPS2` is itself derived from). `worldTree.ts`'s
+  `getDilationInputs` maps a node id to what this needs; `App.tsx`
+  accumulates drift each tick into `session.ts`'s persisted `timeDriftMs`,
+  surfaced via the `time` command
   and continuously on the HUD's Time/Gravity/Velocity rows. See
   `SPEC.md`'s Time, Gravity, and Velocity sections.
 
@@ -215,6 +220,22 @@ against famous real numbers (Earth's ~7.9 km/s low-orbit and ~29.6-29.8
 km/s solar orbit, the Sun's own ~436.7 km/s surface velocity matching
 its real escape velocity ÷ √2); the curated pulsar's local term comes
 out genuinely relativistic (~43% c), shown as a percent of light speed.
+
+Also added this session: official names for the two tiles, shown as a
+dim label in each one's own bottom-right corner — NAVIGATION (top) and
+HUD (bottom). The focused-entry readout (`CATEGORY - label — N o'clock,
+distance`) moved out of the HUD tile into a new footer row on the
+NAVIGATION tile itself, centered, paired with the `NAVIGATION` label
+(`gridHeight` now reserves one more row for this — see `App.tsx`'s
+`gridHeight`/`MIN_TOP_HEIGHT` comments). Also added a second gravity
+row, the "Galactic Gravity Constant" — the same local/star/galactic
+terms the Gravity row shows individually, but summed and displayed as
+the literal running formula (`relativity.ts`'s `formatGravityFormula`).
+Explicitly not meant to represent anything actually felt (real gravity
+doesn't compound additively like this) — it's a raw building block
+reserved for a later calculation. Re-verified the whole HUD restructure
+at both wide and 80-column widths, and across every top-tile variant
+(`SolarView`, a leaf `ContentView`, `Console`, mid-`WarpTransition`).
 
 Nothing in-progress/uncommitted right now — check `ROADMAP.md` Phase 2 for
 what's next (dwarf planets, bots/NPCs, BBS-style messages, tests).

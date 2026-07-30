@@ -36,10 +36,10 @@ import {
   dilationFactor,
   formatDriftMs,
   formatGravity,
+  formatGravityFormula,
   formatUniverseAge,
   formatUniverseAgeCompact,
   formatVelocity,
-  GALACTIC_CENTER_DISTANCE_LY,
   GALACTIC_GRAVITY_MPS2,
   GALACTIC_ORBITAL_SPEED_MPS,
   gravityAtDistance,
@@ -63,22 +63,28 @@ const MAX_LOG_LINES = 4;
 // Bottom panel content budget, fixed regardless of what's actually in the
 // log this frame (log rows are always padded to MAX_LOG_LINES) — this is
 // what makes the top/bottom split arithmetic below deterministic.
-// Time and Gravity each get their own dedicated row rather than sharing
-// the breadcrumb row's right-hand corner — cramming everything into one
-// row wrapped at 80 columns (a completely ordinary terminal width),
-// which silently overflows this box's fixed height (overflow="hidden").
+// Time/Gravity/the galactic gravity formula/Velocity each get their own
+// dedicated row rather than sharing the breadcrumb row's right-hand
+// corner — cramming everything into one row wrapped at 80 columns (a
+// completely ordinary terminal width), which silently overflows this
+// box's fixed height (overflow="hidden"). The focused-body readout moved
+// to the navigation tile's own footer row (see topHeight/gridHeight
+// below), replaced here by the "HUD" tile label.
 const BOTTOM_PANEL_HEIGHT =
   2 /* border */ +
   1 /* breadcrumb */ +
   1 /* time */ +
   1 /* gravity */ +
+  1 /* galactic gravity constant formula */ +
   1 /* velocity */ +
-  1 /* focused-body info */ +
   MAX_LOG_LINES +
+  1 /* "HUD" tile label */ +
   3 /* Prompt's own border+row */;
 const MIN_GRID_WIDTH = 20;
 const MIN_GRID_HEIGHT = 5;
-const MIN_TOP_HEIGHT = MIN_GRID_HEIGHT + 2;
+// +2 for SolarView's own border, +1 for the navigation tile's own footer
+// row (focused-body readout + "NAVIGATION" label) — see gridHeight below.
+const MIN_TOP_HEIGHT = MIN_GRID_HEIGHT + 3;
 
 interface Props {
   session: SessionData;
@@ -257,7 +263,10 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   // bottom border in this version of Ink, so this must stay in sync with
   // SolarView's own border/padding.
   const gridWidth = Math.max(MIN_GRID_WIDTH, cols - 4);
-  const gridHeight = Math.max(MIN_GRID_HEIGHT, topHeight - 2);
+  // -2 for SolarView's own border, -1 more for the navigation tile's own
+  // footer row (focused-body readout + "NAVIGATION" label, added below
+  // the variant content but still inside the topHeight-constrained box).
+  const gridHeight = Math.max(MIN_GRID_HEIGHT, topHeight - 3);
   const positions = useMemo(
     () => computeGridPositions(children, zoomedDomain, gridWidth, gridHeight),
     [children, zoomedDomain, gridWidth, gridHeight]
@@ -428,6 +437,17 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
             gridHeight={gridHeight}
           />
         )}
+        <Box justifyContent="space-between">
+          <Text> </Text>
+          <Text dimColor={!focused}>
+            {transition
+              ? ""
+              : focused
+                ? `${getCategoryLabel(focused.id)} - ${focused.label} — ${toClockHour(focused.angleDeg)} o'clock, ${focused.distance.toFixed(2)}${getDistanceUnitLabel(centerId)}`
+                : "No orbiting bodies here."}
+          </Text>
+          <Text dimColor>NAVIGATION</Text>
+        </Box>
       </Box>
       <Box flexDirection="column" borderStyle="round" paddingX={1} height={BOTTOM_PANEL_HEIGHT} width={cols} overflow="hidden">
         <Box justifyContent="space-between">
@@ -453,21 +473,20 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
           {formatGravity(GALACTIC_GRAVITY_MPS2)}
         </Text>
         <Text dimColor>
+          Galactic Gravity Constant: {formatGravityFormula(GALACTIC_GRAVITY_MPS2, starGravityMps2, localGravityMps2)} m/s²
+        </Text>
+        <Text dimColor>
           Velocity: local {formatVelocity(localVelocityMps)}, star {formatVelocity(starVelocityMps)}, galactic{" "}
           {formatVelocity(GALACTIC_ORBITAL_SPEED_MPS)}
-        </Text>
-        <Text dimColor={!focused}>
-          {transition
-            ? ""
-            : focused
-              ? `${getCategoryLabel(focused.id)} - ${focused.label} — ${toClockHour(focused.angleDeg)} o'clock, ${focused.distance.toFixed(2)}${getDistanceUnitLabel(centerId)}`
-              : "No orbiting bodies here."}
         </Text>
         {Array.from({ length: MAX_LOG_LINES }).map((_, idx) => (
           <Text key={idx} dimColor>
             {log[log.length - MAX_LOG_LINES + idx] ?? ""}
           </Text>
         ))}
+        <Box justifyContent="flex-end">
+          <Text dimColor>HUD</Text>
+        </Box>
         <Prompt active={mode === "command"} value={promptValue} onChange={handlePromptChange} onSubmit={runCommand} />
       </Box>
     </Box>
