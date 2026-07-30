@@ -350,4 +350,15 @@ persisted the same way.
 
 `/` or `:` enters command mode. `help`, `back`, `save <text>`, `notes`,
 `whoami`, `quit`/`exit`. Unknown commands log an error and return to nav
-mode.
+mode. `~` (available directly from nav mode, no `/` needed) opens the
+Console instead — see Console above for its own separate command set
+(`become llm`, `become human`, ...).
+
+Discoverability: nothing in the UI required a player to already know
+`help` existed. The persistent bottom-prompt hint (`Prompt.tsx`, shown
+whenever not actively typing a command) lists `~` alongside the other
+keys; `/help`'s own response now also mentions `~` and the console;
+and every "unknown command" message — in both the main command mode
+(`App.tsx`) and inside the Console (`Console.tsx`) — points back to
+`help` rather than just failing silently, so a mistyped command is
+itself the way a player finds the real command list.

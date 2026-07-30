@@ -154,7 +154,7 @@ export default function Console({ gridWidth, gridHeight, playerType, onBecomeLLM
     } else if (cmd === "close" || cmd === "exit") {
       setClosing(true);
     } else {
-      print(`Unknown command: ${cmd}`);
+      print(`Unknown command: ${cmd}. Type help for commands.`);
     }
   }
 

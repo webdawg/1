@@ -278,7 +278,9 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
     switch (cmd.toLowerCase()) {
       case "help":
-        pushLog("Commands: help, back, save <text>, notes, whoami, quit");
+        pushLog(
+          "Commands: help, back, save <text>, notes, whoami, quit. Press ~ to open the console (change player type: become llm / become human)."
+        );
         break;
       case "back": {
         if (!goBack()) pushLog(`Already at ${centerLabel}.`);
@@ -309,7 +311,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         void saveSession(sessionRef.current).then(() => exit());
         break;
       default:
-        pushLog(`Unknown command: ${cmd}`);
+        pushLog(`Unknown command: ${cmd}. Type help to see commands, or press ~ for the console.`);
     }
   }
 
