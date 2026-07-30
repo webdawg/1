@@ -116,7 +116,12 @@ touching box sizing in `SolarView.tsx`/`App.tsx` again:
   amount, corrupting the border on every render. If this resurfaces
   (new padding, new border style, a wrapping box added around `SolarView`),
   re-derive the actual inner content width from every box the content
-  passes through, not just the outermost border.
+  passes through, not just the outermost border. **Confirmed to recur**:
+  `Console.tsx` (the `~` drop-down console) hit the same thing — its box
+  also has `borderStyle` + `paddingX={1}`, so its explicit `width` needed
+  `gridWidth + 4`, not `+ 2`; the undersized version silently blanked the
+  input row's border every time, found via tmux capture-pane, not by any
+  error/warning.
 - **Ad-hoc test scripts for this must live inside `tui/`** (e.g.
   `tui/scratch-repro.tsx`, delete when done) — running `npx tsx` on a file
   outside `tui/` fails with `Cannot find module 'react'` since Node

@@ -107,7 +107,15 @@ way this file was; ask before rewriting it if you want it to match.
 - `src/components/WarpTransition.tsx` — the "diving through a star"
   animation played when travel crosses the star-map/star boundary
   (`worldTree.ts`'s `isStarBoundary`). Self-contained frame loop, reuses
-  `layout.ts`'s `polarToGrid`, no new position math.
+  `layout.ts`'s `polarToGrid`, no new position math. The traveler figure
+  it draws depends on `playerType` (HUMAN cyan stick figure vs. LLM green
+  circuit figure) — see `SPEC.md`'s Player section.
+- `src/components/Console.tsx` — the Half-Life-style drop-down console
+  (`~` to open, Escape/`close`/`exit` to close, both animated slides).
+  Occupies the same top-tile slot as `SolarView`/`ContentView`/
+  `WarpTransition`. Handles `become llm`/`become human` commands; the
+  former gates on a 5-round token-prediction puzzle. See `SPEC.md`'s
+  Console section for the full mechanic and command list.
 
 Run it: `cd tui && npm install && npm start`
 Typecheck: `cd tui && npm run typecheck`
@@ -141,6 +149,20 @@ icon-collision bug along the way: crowded clusters (e.g. inner rocky
 planets, or nearby stars on the map) used to silently drop an entry
 entirely on overlap; icons are now guaranteed a slot (nudged to the
 nearest free cell if needed) and only labels are ever omitted.
+
+Also added this session: a second `playerType`, LLM, alongside the
+existing default HUMAN (`session.ts`, persisted, back-filled on old
+sessions). Reached through a new Half-Life-style drop-down console
+(`~` to open, `Console.tsx`) — `become llm` gates on a 5-round
+token-prediction puzzle (3/5 to pass, curated prompt/answer pool,
+e.g. "To be or not to be, that is the ___" → "question"); `become human`
+reverts instantly, no puzzle. The HUD identity label and the
+`WarpTransition` traveler figure (cyan HUMAN stick figure vs. green LLM
+circuit figure) both now follow `playerType`. Hit and fixed the same
+box-width-math pitfall `SolarView` hit earlier in the project (`DEVELOPMENT.md`):
+`Console`'s bordered+padded box needs `gridWidth + 4`, not `+ 2`, to
+land at the full tile width — verified via tmux, the undersized version
+silently corrupted the input row's rendering.
 
 Nothing in-progress/uncommitted right now — check `ROADMAP.md` Phase 2 for
 what's next (dwarf planets, bots/NPCs, BBS-style messages, tests).

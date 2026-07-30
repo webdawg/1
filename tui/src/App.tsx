@@ -3,6 +3,7 @@ import { Box, Text, useApp, useInput, useWindowSize } from "ink";
 import SolarView from "./components/SolarView.js";
 import ContentView from "./components/ContentView.js";
 import Prompt from "./components/Prompt.js";
+import Console from "./components/Console.js";
 import WarpTransition, { type TransitionPhase } from "./components/WarpTransition.js";
 import {
   applyZoom,
@@ -28,7 +29,7 @@ import {
   parseLeafId,
 } from "./worldTree.js";
 import { isStarId, STARMAP_ID } from "./starFacts.js";
-import { saveSession, type SessionData } from "./session.js";
+import { saveSession, type PlayerType, type SessionData } from "./session.js";
 
 // Narrates each phase of a SOLAR BASE JUMP in the HUD while WarpTransition
 // plays the visuals — see SCOPE.md's 2026-07-29 addendum.
@@ -70,6 +71,8 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>("approach");
   const [mode, setMode] = useState<"nav" | "command">("nav");
   const [promptValue, setPromptValue] = useState("");
+  const [playerType, setPlayerType] = useState<PlayerType>(session.playerType);
+  const [consoleOpen, setConsoleOpen] = useState(false);
   const [log, setLog] = useState<string[]>(
     isNewSession
       ? [
@@ -102,6 +105,12 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
   function persist(nextPath: string[]) {
     sessionRef.current.path = nextPath;
+    void saveSession(sessionRef.current);
+  }
+
+  function setAndPersistPlayerType(type: PlayerType) {
+    setPlayerType(type);
+    sessionRef.current.playerType = type;
     void saveSession(sessionRef.current);
   }
 
@@ -238,8 +247,11 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
       if (input === "/" || input === ":") {
         setMode("command");
       }
+      if (input === "~") {
+        setConsoleOpen(true);
+      }
     },
-    { isActive: mode === "nav" && !transition }
+    { isActive: mode === "nav" && !transition && !consoleOpen }
   );
 
   function handlePromptChange(value: string) {
@@ -308,9 +320,19 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
           <WarpTransition
             gridWidth={gridWidth}
             gridHeight={gridHeight}
+            playerType={playerType}
             travelMs={transition.travelMs}
             onPhaseChange={setTransitionPhase}
             onComplete={completeTransition}
+          />
+        ) : consoleOpen ? (
+          <Console
+            gridWidth={gridWidth}
+            gridHeight={gridHeight}
+            playerType={playerType}
+            onBecomeLLM={() => setAndPersistPlayerType("LLM")}
+            onBecomeHuman={() => setAndPersistPlayerType("HUMAN")}
+            onClosed={() => setConsoleOpen(false)}
           />
         ) : isLeaf ? (
           <ContentView nodeId={centerId} date={now} notes={sessionRef.current.notes[centerId] ?? []} />
@@ -327,7 +349,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
       </Box>
       <Box flexDirection="column" borderStyle="round" paddingX={1} height={BOTTOM_PANEL_HEIGHT} width={cols} overflow="hidden">
         <Box justifyContent="space-between">
-          <Text bold>HUMAN</Text>
+          <Text bold>{playerType}</Text>
           <Text color={transition ? "yellow" : undefined} bold={Boolean(transition)}>
             {transition ? (
               PHASE_MESSAGES[transitionPhase](transition.label)

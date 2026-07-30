@@ -12,6 +12,8 @@ import { join } from "node:path";
 
 const SESSIONS_DIR = join(homedir(), ".solar-tui", "sessions");
 
+export type PlayerType = "HUMAN" | "LLM";
+
 export interface SessionData {
   sessionId: string;
   resumeKey: string;
@@ -20,6 +22,8 @@ export interface SessionData {
   path: string[];
   /** Freeform notes saved per node id. */
   notes: Record<string, string[]>;
+  /** Default entity type; becoming LLM requires solving the console's puzzle — see Console.tsx. */
+  playerType: PlayerType;
 }
 
 function token(bytes: number): string {
@@ -40,6 +44,7 @@ export function createSession(): SessionData {
     // the star map is unreachable (Escape only pops existing path entries).
     path: ["starmap", "sun"],
     notes: {},
+    playerType: "HUMAN",
   };
 }
 
@@ -57,5 +62,6 @@ export async function loadSession(
   const raw = await readFile(path, "utf8");
   const data = JSON.parse(raw) as SessionData;
   if (data.resumeKey !== resumeKey) return null;
-  return data;
+  // Older saved sessions predate playerType.
+  return { ...data, playerType: data.playerType ?? "HUMAN" };
 }

@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import { polarToGrid } from "../layout.js";
+import type { PlayerType } from "../session.js";
 
 export type TransitionPhase = "approach" | "rotate" | "open" | "darkspot" | "traveling";
 
 interface Props {
   gridWidth: number;
   gridHeight: number;
+  /** Whose figure appears during approach/rotate/open — see HUMAN_FIGURE/LLM_FIGURE. */
+  playerType: PlayerType;
   /** How long the "traveling" phase lasts — real distance drives this, see layout.ts's computeTravelDurationMs. */
   travelMs: number;
   onPhaseChange: (phase: TransitionPhase) => void;
@@ -33,10 +36,14 @@ const SETUP_PHASES: TransitionPhase[] = [
   "darkspot", "darkspot", "darkspot",
 ];
 
-// A HUMAN, arms and legs, 3 rows x 3 cols — the default player identity
-// (see SCOPE.md's 2026-07-29 addendum). Only appears during the approach/
-// rotate/open phases; already consumed by the time the dark spot forms.
-const HUMAN_FIGURE = [" o ", "/|\\", "/ \\"];
+// The traveler, 3 rows x 3 cols — only appears during the approach/rotate/
+// open phases; already consumed by the time the dark spot forms. HUMAN is
+// arms-and-legs; LLM is deliberately not humanoid (a core, a circuit body,
+// a hovering base instead of legs) — see SCOPE.md's 2026-07-29 addenda.
+const TRAVELER_FIGURES: Record<PlayerType, { lines: string[]; color: string }> = {
+  HUMAN: { lines: [" o ", "/|\\", "/ \\"], color: "cyan" },
+  LLM: { lines: [" ◆ ", "<#>", "==="], color: "green" },
+};
 
 // Quantum data drifting past as the HUMAN mind bends and becomes part of
 // the universe — alien thoughts, alien machine messages, whatever. Mixed
@@ -85,24 +92,26 @@ function stampStarRing(
   }
 }
 
-/** The HUMAN, fixed straight-up (90°) from the star so its shape never needs to rotate. */
-function stampHuman(
+/** The traveler, fixed straight-up (90°) from the star so its shape never needs to rotate. */
+function stampTraveler(
   grid: Cell[][],
   centerX: number,
   centerY: number,
   radius: number,
+  playerType: PlayerType,
   gridWidth: number,
   gridHeight: number
 ): void {
+  const { lines, color } = TRAVELER_FIGURES[playerType];
   const { x, y } = polarToGrid(centerX, centerY, 90, radius);
-  for (let r = 0; r < HUMAN_FIGURE.length; r++) {
+  for (let r = 0; r < lines.length; r++) {
     const row = y - 1 + r;
     if (row < 0 || row >= gridHeight) continue;
-    const line = HUMAN_FIGURE[r];
+    const line = lines[r];
     for (let c = 0; c < line.length; c++) {
       const col = x - 1 + c;
       if (col < 0 || col >= gridWidth || line[c] === " ") continue;
-      grid[row][col] = { char: line[c], color: "cyan", bold: true };
+      grid[row][col] = { char: line[c], color, bold: true };
     }
   }
 }
@@ -126,7 +135,7 @@ function fillDisk(
   }
 }
 
-function buildSetupFrame(step: number, gridWidth: number, gridHeight: number): Cell[][] {
+function buildSetupFrame(step: number, playerType: PlayerType, gridWidth: number, gridHeight: number): Cell[][] {
   const grid = blankGrid(gridWidth, gridHeight);
   const centerX = Math.floor(gridWidth / 2);
   const centerY = Math.floor(gridHeight / 2);
@@ -142,11 +151,11 @@ function buildSetupFrame(step: number, gridWidth: number, gridHeight: number): C
 
   if (phase === "approach") {
     const radii = [maxRadius, maxRadius * 0.6, ringRadius + 2];
-    stampHuman(grid, centerX, centerY, radii[subStep], gridWidth, gridHeight);
+    stampTraveler(grid, centerX, centerY, radii[subStep], playerType, gridWidth, gridHeight);
   } else if (phase === "rotate") {
-    stampHuman(grid, centerX, centerY, ringRadius, gridWidth, gridHeight);
+    stampTraveler(grid, centerX, centerY, ringRadius, playerType, gridWidth, gridHeight);
   } else if (phase === "open") {
-    if (subStep === 0) stampHuman(grid, centerX, centerY, ringRadius, gridWidth, gridHeight);
+    if (subStep === 0) stampTraveler(grid, centerX, centerY, ringRadius, playerType, gridWidth, gridHeight);
     const diskChar = subStep === 0 ? "▒" : subStep === 1 ? "▓" : "█";
     fillDisk(grid, centerX, centerY, subStep + 1, diskChar, "yellow", gridWidth, gridHeight);
   } else if (phase === "darkspot") {
@@ -204,7 +213,7 @@ function TransitionRow({ row }: { row: Cell[] }): React.JSX.Element {
   );
 }
 
-export default function WarpTransition({ gridWidth, gridHeight, travelMs, onPhaseChange, onComplete }: Props): React.JSX.Element {
+export default function WarpTransition({ gridWidth, gridHeight, playerType, travelMs, onPhaseChange, onComplete }: Props): React.JSX.Element {
   const [step, setStep] = useState(0);
   const [traveling, setTraveling] = useState(false);
   const [travelWords, setTravelWords] = useState<TravelWord[]>([]);
@@ -237,7 +246,9 @@ export default function WarpTransition({ gridWidth, gridHeight, travelMs, onPhas
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [traveling]);
 
-  const grid = traveling ? buildTravelingFrame(travelWords, gridWidth, gridHeight) : buildSetupFrame(step, gridWidth, gridHeight);
+  const grid = traveling
+    ? buildTravelingFrame(travelWords, gridWidth, gridHeight)
+    : buildSetupFrame(step, playerType, gridWidth, gridHeight);
 
   return (
     <Box flexDirection="column" borderStyle="round" paddingX={1}>

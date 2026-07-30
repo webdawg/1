@@ -181,26 +181,85 @@ resets to the new set's first entry.
 
 ## Player
 
-The player's entity type is not yet selectable or creatable — that's
-future work (`ROADMAP.md` Phase 6). The default, and currently only,
-entity type is **HUMAN** — always shown in capital letters, matching
-every other emphasized term from `SCOPE.md`'s addenda (SHIP, SOLAR BASE
-JUMP, GRAVITATIONAL WELL, STAR, DARK SPOT, QUANTUM, UNIVERSE). `App.tsx`
-shows it permanently in the bottom panel's top row, leftmost of a 3-way
-`justifyContent="space-between"` split (`HUMAN` — breadcrumb/transition
+The player has a `playerType`, currently either **HUMAN** or **LLM** —
+always shown in capital letters, matching every other emphasized term
+from `SCOPE.md`'s addenda (SHIP, SOLAR BASE JUMP, GRAVITATIONAL WELL,
+STAR, DARK SPOT, QUANTUM, UNIVERSE). `session.ts`'s `SessionData` persists
+it (`createSession()` defaults to `HUMAN`; `loadSession()` back-fills a
+missing field on older saved sessions to `HUMAN`). `App.tsx` shows it
+permanently in the bottom panel's top row, leftmost of a 3-way
+`justifyContent="space-between"` split (type — breadcrumb/transition
 status — zoom indicator) — persistent identity, not view state, so it's
 visible on every screen including leaf `ContentView` pages and mid-jump.
+Selectable/creatable entity types beyond these two remain future work
+(`ROADMAP.md` Phase 6).
 
-During a SOLAR BASE JUMP specifically, the HUMAN is drawn as a small
-ASCII stick figure:
+During a SOLAR BASE JUMP, the player is drawn as a small ASCII figure —
+which one depends on `playerType` (`WarpTransition.tsx`'s
+`TRAVELER_FIGURES` lookup, stamped by the type-agnostic `stampTraveler`):
 ```
- o
-/|\
-/ \
+HUMAN            LLM
+ o                ◆
+/|\              <#>
+/ \              ===
 ```
-3 rows × 3 cols, cyan/bold, anchored by its vertical center — see Star
-travel transition below for when it appears. It isn't a persistent map
-icon; it only exists inside the jump animation itself.
+Both 3 rows × 3 cols, anchored by their vertical center — HUMAN cyan/bold
+(arms and legs), LLM green/bold (a core, a circuit-marked body, a
+hovering base instead of legs — deliberately not humanoid). See Star
+travel transition below for when it appears. Neither is a persistent map
+icon; the figure only exists inside the jump animation itself.
+
+## Console — converting to LLM
+
+`~` slides a Half-Life-style console down from the top of the screen
+(`Console.tsx`), occupying the same top-tile slot as `SolarView` /
+`ContentView` / `WarpTransition` in `App.tsx`'s render ternary. It only
+opens when `mode === "nav" && !transition && !consoleOpen` — a jump in
+progress or command-mode blocks it, same gating pattern as other nav
+keys. Visually distinct from the rest of the app on purpose: double
+border, green throughout (every other bordered tile uses round borders,
+cyan/yellow). Opening and closing both slide (`openStep` ramps 0→5 over
+~70ms/step — snappier than `WarpTransition`'s 200ms/frame cinematic
+pace); closing reverses the ramp and only calls `onClosed()` (which flips
+`App.tsx`'s `consoleOpen` back to `false`, unmounting `Console`) once
+`openStep` reaches 0, so the close animation actually plays instead of an
+instant cut. Escape (or the `close`/`exit` command) starts the close;
+`Console`'s own narrow `useInput` only checks `key.escape`, so it never
+conflicts with the `TextInput` (from `ink-text-input`, same component
+`Prompt.tsx` uses) that handles the actual typed line.
+
+Like every other top-tile box in this app (`SolarView`, the bottom
+panel), `Console`'s outer `Box` has `borderStyle` + `paddingX={1}` — 4
+columns of overhead (2 border + 2 padding) — so its `width` must be
+`gridWidth + 4` to land back at the full tile width `App.tsx` already
+computed (`cols - 4`) for a box with that same overhead. Getting this
+wrong (e.g. `+2`, accounting for only the border) doesn't error — it
+silently corrupts that row's rendering in this Ink version, the same
+pitfall `SolarView`'s own width math hit (see `DEVELOPMENT.md`).
+
+Commands, typed + Enter:
+- `help` — lists commands.
+- `become llm` (aliases `llm`, `convert`) — starts the puzzle below if
+  not already LLM, else prints "Already LLM.".
+- `become human` (aliases `human`, `revert`) — instant, no puzzle
+  (reverting to the default isn't gated); no-ops with a message if
+  already HUMAN.
+- `close` / `exit` — same as Escape.
+- anything else — echoed as an "unknown command" line.
+
+**The puzzle**: `become llm` picks 5 distinct random entries from a
+curated `PUZZLE_POOL` (~15 iconic, near-100%-predictable completions —
+the exact thing a language model is good at, e.g. `"To be or not to be,
+that is the ___"` → `question`, `"E equals m c ___"` → `squared`/`^2`/`2`).
+Each round prints `Round N/5: {prompt}`, waits for the next submitted
+line, normalizes both sides (lowercase, trim, strip trailing
+punctuation) and compares against the answer list, prints
+`Correct!`/`Incorrect — it was "{answer}".`, advances. After 5 rounds:
+score `>= 3` (`PASS_THRESHOLD`) prints a success banner and fires
+`onBecomeLLM()` (parent flips `playerType`, persists via
+`setAndPersistPlayerType`, logs it); otherwise a failure line, back to
+idle — re-running `become llm` starts a fresh attempt with no penalty or
+cooldown. Closing the console mid-puzzle just abandons the attempt.
 
 ## Star travel transition
 
@@ -243,25 +302,27 @@ the animation's actual length.
 Five phases, reported to `App.tsx` via `onPhaseChange` as they happen:
 
 1. **approach** (3 × 200ms) — a star ring (points on a circle at ~35% of
-   max radius) appears; the HUMAN steps inward toward it over the 3
-   frames, fixed at a straight-up angle so its shape never needs to
-   rotate. *"Approaching {label}..."*
+   max radius) appears; the traveler's figure (HUMAN or LLM, per
+   `playerType`) steps inward toward it over the 3 frames, fixed at a
+   straight-up angle so its shape never needs to rotate. *"Approaching
+   {label}..."*
 2. **rotate** (3 × 200ms) — the ring's points shift a few degrees each
-   frame (a simple spin illusion); the HUMAN arrives at the ring's edge.
-   *"{label} begins to turn..."*
+   frame (a simple spin illusion); the traveler arrives at the ring's
+   edge. *"{label} begins to turn..."*
 3. **open** (3 × 200ms) — a filled disk grows at the ring's center
-   (`▒`→`▓`→`█`, radius 1→2→3); the HUMAN is drawn once more on this
+   (`▒`→`▓`→`█`, radius 1→2→3); the traveler is drawn once more on this
    phase's first frame, then dropped (it's entering the opening).
    *"A path opens at its heart..."*
 4. **darkspot** (3 × 200ms) — a solid-block disk expands from center
-   until it covers the grid; no HUMAN (already consumed).
+   until it covers the grid; no traveler figure (already consumed).
    *"Pulled into the GRAVITATIONAL WELL..."*
 5. **traveling** (`travelMs`, sqrt-scaled by real distance — see below;
    *not* frame-counted) — blank grid, `QUANTUM_WORDS` (a curated mix of
    single evocative words, binary-ish noise, and short alien/machine
    phrases) flicker in at random positions every ~450ms, representing
-   quantum data emerging as the HUMAN mind becomes part of the universe.
-   *"SOLAR BASE JUMP in progress — quantum data drifting past..."*
+   quantum data emerging as the traveler's mind becomes part of the
+   universe. *"SOLAR BASE JUMP in progress — quantum data drifting
+   past..."*
 
 The first four phases are always a fixed ~2.4s total, regardless of
 distance — only the travel phase scales:
