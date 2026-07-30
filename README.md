@@ -8,6 +8,12 @@ planet positions.
 ## Running
 
 ```bash
+./run.sh
+```
+
+or manually:
+
+```bash
 cd tui
 npm install
 npm start
@@ -21,8 +27,34 @@ body, Escape/Backspace goes back. Type `/` or `:` for command mode
 npm run typecheck
 ```
 
-See `tui/` for the source layout and `CLAUDE.md` for current status and the
-roadmap.
+See `tui/` for the source layout.
+
+## Documentation
+
+Beyond this README, the repo carries a small stack of docs, each with a
+distinct scope:
+
+- [`SCOPE.md`](SCOPE.md) — the founding vision statement: the long-term
+  idea behind this project, well beyond what's currently built. Not a
+  spec, just the north star for judging where features should
+  eventually head. Includes dated addenda as the vision gets extended
+  over time.
+- [`ROADMAP.md`](ROADMAP.md) — the phased plan derived from that vision,
+  broken into concrete, checkable items. Check here for what's next
+  before starting new work.
+- [`SPEC.md`](SPEC.md) — the technical specification of how the engine
+  *currently* works: world model, layout, icon/placement rules, spatial
+  navigation, the player/console/travel systems, session model. Kept in
+  sync with the code, as distinct from `SCOPE.md`'s vision and
+  `ROADMAP.md`'s plan.
+- [`DEVELOPMENT.md`](DEVELOPMENT.md) — the development environment:
+  prerequisites, setup, running, and how TUI changes get verified (no
+  automated test framework yet, so this matters more than usual). Also
+  where Ink-specific gotchas hit during development get recorded.
+- [`CLAUDE.md`](CLAUDE.md) — guidance for Claude Code (or any AI coding
+  assistant) working in this repo: project/file structure, conventions,
+  and a "Current status" section tracking tactical, uncommitted-right-now
+  detail that changes faster than `ROADMAP.md`'s phases do.
 
 ## Python skeleton
 

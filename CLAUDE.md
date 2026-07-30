@@ -54,8 +54,10 @@ This repo actually contains two unrelated things:
    still empty and nothing has been built on top of them. Treat this as
    vestigial unless the user says otherwise — the TUI is where the work is.
 
-`README.md` still only describes the Python skeleton and is stale in the same
-way this file was; ask before rewriting it if you want it to match.
+`README.md` covers the TUI (running it, commands) and links out to
+`SCOPE.md`/`ROADMAP.md`/`SPEC.md`/`DEVELOPMENT.md`/this file with a
+one-line description of each's scope — keep that list in sync if a doc's
+purpose shifts or a new one is added.
 
 ## `tui/` structure
 
