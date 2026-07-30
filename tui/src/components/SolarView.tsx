@@ -174,7 +174,7 @@ function SolarView({ centerGlyph, orbitEntries, domain, focusedId, gridWidth, gr
   const grid = buildGrid(centerGlyph, orbitEntries, domain, focusedId, gridWidth, gridHeight);
 
   return (
-    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+    <Box flexDirection="column">
       {grid.map((row, idx) => (
         <GridRow key={idx} row={row} />
       ))}

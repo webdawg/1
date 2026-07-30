@@ -16,9 +16,7 @@ export default function Prompt({ active, value, onChange, onSubmit }: Props): Re
       {active ? (
         <TextInput value={value} onChange={onChange} onSubmit={onSubmit} />
       ) : (
-        <Text dimColor>
-          type / or : for commands, arrows to look around, enter to travel, esc to go back, ~ for console
-        </Text>
+        <Text dimColor>/ or : commands, arrows move, enter travel, esc back, ~ console</Text>
       )}
     </Box>
   );

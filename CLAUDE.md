@@ -64,9 +64,12 @@ purpose shifts or a new one is added.
 - `src/index.tsx` — entry point, session bootstrap.
 - `src/App.tsx` — main loop: arrow-key navigation, `/`-command mode
   (`help`, `back`, `save <text>`, `notes`, `whoami`, `time`, `quit`), local
-  session persistence via `session.ts`. Renders the two official tiles,
-  each labeled in its own bottom-right corner: NAVIGATION (top) and HUD
-  (bottom) — see `SPEC.md`'s Layout section.
+  session persistence via `session.ts`. Renders the two official tiles —
+  each one a single bordered box with nothing outside its own frame
+  (the `~` console is the sole exception, its own floating overlay):
+  NAVIGATION (top), labeled top-right, with the focused-entry footer
+  readout inside the same frame; HUD (bottom), labeled bottom-right as
+  its actual last row — see `SPEC.md`'s Layout section.
 - `src/worldTree.ts` — the core model. Given a node id, returns what orbits
   it (`getOrbitChildren`), plus id classification/labeling helpers
   (`getNodeKind`, `getCenterLabel`, `getBreadcrumbLabel`, `getDistanceDomain`).
@@ -87,12 +90,14 @@ purpose shifts or a new one is added.
   bottom panel's job). Generic over `OrbitEntry`/`DistanceDomain`; new body
   categories need no changes here, just a `glyph` in `worldTree.ts`. Takes
   `gridWidth`/`gridHeight` as props (sized dynamically by `App.tsx` from
-  the real terminal size) — **its box has `paddingX={1}` and a border, so
-  `gridWidth` must already have 4 columns subtracted for those (2 border +
-  2 padding), not just the border's 2. Getting this wrong doesn't error or
-  warn — it silently corrupts the box's bottom border in this Ink version
-  when a row's text overflows the actual content width.** See
-  `DEVELOPMENT.md` for how this was diagnosed if it resurfaces.
+  the real terminal size). Renders bare content, no border of its own —
+  `App.tsx` owns the one NAVIGATION tile border that wraps this (and
+  `ContentView`/`WarpTransition`) — so **`gridWidth` must already have 4
+  columns subtracted for that tile's border+`paddingX={1}` (2 border + 2
+  padding). Getting this wrong doesn't error or warn — it silently
+  corrupts the box's bottom border in this Ink version when a row's text
+  overflows the actual content width.** See `DEVELOPMENT.md` for how this
+  was diagnosed if it resurfaces.
 - `src/spatialNav.ts` — `pickNextFocus`: given the currently-focused entry's
   plotted grid position and an arrow-key direction, picks whichever *other*
   entry is actually positioned that direction on screen (nearest-neighbor
@@ -237,8 +242,40 @@ reserved for a later calculation. Re-verified the whole HUD restructure
 at both wide and 80-column widths, and across every top-tile variant
 (`SolarView`, a leaf `ContentView`, `Console`, mid-`WarpTransition`).
 
-Nothing in-progress/uncommitted right now — check `ROADMAP.md` Phase 2 for
-what's next (dwarf planets, bots/NPCs, BBS-style messages, tests).
+Also added this session: a follow-up correction to the tile labeling
+above — the NAVIGATION footer readout and the `NAVIGATION` label had
+been placed in the same outer flex slot as the tile's content, but
+*outside* that content's own bordered box (confirmed via an 80-column
+tmux capture on the prior commit: both floated as bare text between the
+two tiles' borders, not inside either). Fixed by moving the border
+itself up to `App.tsx`'s wrapping box — `SolarView`/`WarpTransition` now
+render bare content, no border of their own — so one frame encloses the
+`NAVIGATION` label (moved to top-right), the content, and the footer
+readout together; `ContentView`'s leaf sub-components keep their own
+small bordered "card" nested inside that same tile. The `~` console is
+the deliberate exception, staying a separate floating overlay with its
+own distinct double border, per how it represents a different mode
+rather than tile content. Also moved the `HUD` label to after the
+prompt so it's the tile's literal last row (true bottom-right corner)
+instead of floating above the prompt with slack below it. Along the
+way, fixed two real Ink layout bugs this surfaced: an empty-string
+`Text` collapses to zero height in this Ink version (log padding now
+uses a single space instead), and `Prompt.tsx`'s inactive hint text had
+grown too long to fit one line at 80 columns, silently overflowing its
+budgeted row count once the empty-string bug above stopped masking it
+(hint text shortened). See `DEVELOPMENT.md` for both. Re-verified at
+both wide and 80-column widths across `SolarView`, a leaf `ContentView`
+(including nested-card leaves), `Console`, and mid-`WarpTransition`.
+
+Flagged but not fixed (pre-existing, unrelated to the above): the HUD
+breadcrumb row's `(Sun > ... > X)` path suffix has no length limit and
+overflows/corrupts at 80 columns for sufficiently deep paths (e.g.
+`Nearby Stars > Sun > Mercury > Orbit Log`) — confirmed present on the
+prior commit too, not introduced this session.
+
+Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
+Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,
+tests).
 
 ## Long-term roadmap
 

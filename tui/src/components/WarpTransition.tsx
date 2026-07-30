@@ -251,7 +251,7 @@ export default function WarpTransition({ gridWidth, gridHeight, playerType, trav
     : buildSetupFrame(step, playerType, gridWidth, gridHeight);
 
   return (
-    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+    <Box flexDirection="column">
       {grid.map((row, idx) => (
         <TransitionRow key={idx} row={row} />
       ))}

@@ -67,9 +67,9 @@ const MAX_LOG_LINES = 4;
 // dedicated row rather than sharing the breadcrumb row's right-hand
 // corner — cramming everything into one row wrapped at 80 columns (a
 // completely ordinary terminal width), which silently overflows this
-// box's fixed height (overflow="hidden"). The focused-body readout moved
-// to the navigation tile's own footer row (see topHeight/gridHeight
-// below), replaced here by the "HUD" tile label.
+// box's fixed height (overflow="hidden"). The "HUD" tile label is its own
+// row too, placed after the Prompt so it lands on the tile's literal
+// bottom-right corner rather than floating above the input row.
 const BOTTOM_PANEL_HEIGHT =
   2 /* border */ +
   1 /* breadcrumb */ +
@@ -78,13 +78,19 @@ const BOTTOM_PANEL_HEIGHT =
   1 /* galactic gravity constant formula */ +
   1 /* velocity */ +
   MAX_LOG_LINES +
-  1 /* "HUD" tile label */ +
-  3 /* Prompt's own border+row */;
+  3 /* Prompt's own border+row */ +
+  1 /* "HUD" tile label */;
 const MIN_GRID_WIDTH = 20;
 const MIN_GRID_HEIGHT = 5;
-// +2 for SolarView's own border, +1 for the navigation tile's own footer
-// row (focused-body readout + "NAVIGATION" label) — see gridHeight below.
-const MIN_TOP_HEIGHT = MIN_GRID_HEIGHT + 3;
+// The NAVIGATION tile's own border+label+footer now live in ONE bordered
+// box owned by App.tsx (not SolarView/WarpTransition, which render bare
+// content) so nothing — the "NAVIGATION" label, the focused-body footer
+// readout — sits outside the tile's frame. Budget: +2 border, +1 top
+// label row ("NAVIGATION", top-right), +1 bottom footer row (focused-body
+// readout) — see gridHeight below. The `~` console is the sole exception
+// (per SCOPE.md's framing): it draws its own distinct double-border
+// overlay and isn't wrapped in this tile at all.
+const MIN_TOP_HEIGHT = MIN_GRID_HEIGHT + 4;
 
 interface Props {
   session: SessionData;
@@ -258,15 +264,14 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   const cols = columns || 80;
   const rowsSafe = rows || 24;
   const topHeight = Math.max(MIN_TOP_HEIGHT, rowsSafe - BOTTOM_PANEL_HEIGHT);
-  // SolarView's box consumes 2 cols for its border plus 2 more for its
+  // The NAVIGATION tile's own border consumes 2 cols plus 2 more for its
   // paddingX={1} — rows wider than that overflow the box and corrupt its
   // bottom border in this version of Ink, so this must stay in sync with
-  // SolarView's own border/padding.
+  // that tile's actual border/padding in the render below.
   const gridWidth = Math.max(MIN_GRID_WIDTH, cols - 4);
-  // -2 for SolarView's own border, -1 more for the navigation tile's own
-  // footer row (focused-body readout + "NAVIGATION" label, added below
-  // the variant content but still inside the topHeight-constrained box).
-  const gridHeight = Math.max(MIN_GRID_HEIGHT, topHeight - 3);
+  // -2 for the NAVIGATION tile's own border, -1 for its top label row, -1
+  // for its bottom footer row (focused-body readout) — see MIN_TOP_HEIGHT.
+  const gridHeight = Math.max(MIN_GRID_HEIGHT, topHeight - 4);
   const positions = useMemo(
     () => computeGridPositions(children, zoomedDomain, gridWidth, gridHeight),
     [children, zoomedDomain, gridWidth, gridHeight]
@@ -407,16 +412,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   return (
     <Box flexDirection="column" width={cols} height={rowsSafe}>
       <Box flexDirection="column" height={topHeight} width={cols}>
-        {transition ? (
-          <WarpTransition
-            gridWidth={gridWidth}
-            gridHeight={gridHeight}
-            playerType={playerType}
-            travelMs={transition.travelMs}
-            onPhaseChange={setTransitionPhase}
-            onComplete={completeTransition}
-          />
-        ) : consoleOpen ? (
+        {consoleOpen ? (
           <Console
             gridWidth={gridWidth}
             gridHeight={gridHeight}
@@ -425,29 +421,50 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
             onBecomeHuman={() => setAndPersistPlayerType("HUMAN")}
             onClosed={() => setConsoleOpen(false)}
           />
-        ) : isLeaf ? (
-          <ContentView nodeId={centerId} date={now} notes={sessionRef.current.notes[centerId] ?? []} />
         ) : (
-          <SolarView
-            centerGlyph={getCenterGlyph(centerId)}
-            orbitEntries={children}
-            domain={zoomedDomain}
-            focusedId={focusedId}
-            gridWidth={gridWidth}
-            gridHeight={gridHeight}
-          />
+          <Box
+            flexDirection="column"
+            borderStyle="round"
+            paddingX={1}
+            height={topHeight}
+            width={cols}
+            overflow="hidden"
+          >
+            <Box justifyContent="flex-end">
+              <Text dimColor>NAVIGATION</Text>
+            </Box>
+            {transition ? (
+              <WarpTransition
+                gridWidth={gridWidth}
+                gridHeight={gridHeight}
+                playerType={playerType}
+                travelMs={transition.travelMs}
+                onPhaseChange={setTransitionPhase}
+                onComplete={completeTransition}
+              />
+            ) : isLeaf ? (
+              <ContentView nodeId={centerId} date={now} notes={sessionRef.current.notes[centerId] ?? []} />
+            ) : (
+              <SolarView
+                centerGlyph={getCenterGlyph(centerId)}
+                orbitEntries={children}
+                domain={zoomedDomain}
+                focusedId={focusedId}
+                gridWidth={gridWidth}
+                gridHeight={gridHeight}
+              />
+            )}
+            <Box justifyContent="center">
+              <Text dimColor={!focused}>
+                {transition
+                  ? ""
+                  : focused
+                    ? `${getCategoryLabel(focused.id)} - ${focused.label} — ${toClockHour(focused.angleDeg)} o'clock, ${focused.distance.toFixed(2)}${getDistanceUnitLabel(centerId)}`
+                    : "No orbiting bodies here."}
+              </Text>
+            </Box>
+          </Box>
         )}
-        <Box justifyContent="space-between">
-          <Text> </Text>
-          <Text dimColor={!focused}>
-            {transition
-              ? ""
-              : focused
-                ? `${getCategoryLabel(focused.id)} - ${focused.label} — ${toClockHour(focused.angleDeg)} o'clock, ${focused.distance.toFixed(2)}${getDistanceUnitLabel(centerId)}`
-                : "No orbiting bodies here."}
-          </Text>
-          <Text dimColor>NAVIGATION</Text>
-        </Box>
       </Box>
       <Box flexDirection="column" borderStyle="round" paddingX={1} height={BOTTOM_PANEL_HEIGHT} width={cols} overflow="hidden">
         <Box justifyContent="space-between">
@@ -481,13 +498,17 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         </Text>
         {Array.from({ length: MAX_LOG_LINES }).map((_, idx) => (
           <Text key={idx} dimColor>
-            {log[log.length - MAX_LOG_LINES + idx] ?? ""}
+            {/* A truly empty string collapses this Text to zero height in this
+                Ink version, pushing the HUD tile's slack to the bottom instead
+                of keeping unused log rows in place — a single space keeps the
+                row's height so "HUD" (see below) stays flush at the corner. */}
+            {log[log.length - MAX_LOG_LINES + idx] ?? " "}
           </Text>
         ))}
+        <Prompt active={mode === "command"} value={promptValue} onChange={handlePromptChange} onSubmit={runCommand} />
         <Box justifyContent="flex-end">
           <Text dimColor>HUD</Text>
         </Box>
-        <Prompt active={mode === "command"} value={promptValue} onChange={handlePromptChange} onSubmit={runCommand} />
       </Box>
     </Box>
   );

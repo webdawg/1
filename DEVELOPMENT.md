@@ -137,6 +137,36 @@ touching box sizing in `SolarView.tsx`/`App.tsx` again:
   width the dev tmux session happens to default to; the fix here was
   giving Time (and later Gravity) each their own dedicated row instead
   of sharing space in a already-busy corner.
+- **A `<Text>` whose entire content is the empty string (`""`) renders
+  at zero height in this Ink version, instead of a normal blank line.**
+  Inside a box with a fixed `height`, this doesn't error — it just makes
+  the box's real content shorter than its row budget, so unused space
+  gets pushed to wherever flex layout puts the remainder (in the HUD
+  tile's case, silently to the very bottom, after the last real row,
+  rather than staying in place where the empty row logically belonged).
+  Found via the log panel's always-`MAX_LOG_LINES`-rows padding
+  (`log[...] ?? ""`): with fewer than 4 real log lines, the "missing"
+  ones vanished instead of holding their row, which meant the `HUD` tile
+  label (meant to sit flush in the bottom-right corner) had slack space
+  below it whenever the log wasn't full. Fixed by padding with a single
+  space (`" "`) instead of `""` — a space-only `Text` does hold its row.
+- **A `Box` with no explicit `height` sizes to its content, and if that
+  content wraps to more lines than expected, the box silently grows —
+  which is fine on its own, but breaks any *sibling* budget math that
+  assumed a fixed row count for it.** `Prompt.tsx`'s inactive hint text
+  had grown (across several sessions of appending new commands to it)
+  past what fits on one line inside its own bordered+padded box at 80
+  columns; it was silently wrapping to 2 lines, making `Prompt`'s real
+  height 4 rows instead of the 3 `App.tsx`'s `BOTTOM_PANEL_HEIGHT`
+  budgeted for it. This had been masked for a while by the empty-string
+  collapse bug above (the "missing" log rows happened to absorb the
+  overflow) — fixing that bug made this one visible for the first time,
+  as visible row-content bleeding between the breadcrumb and Time rows
+  at 80 columns. Fixed by shortening the hint text to reliably fit one
+  line. Lesson: any dynamic/long `Text` inside a component whose height
+  a parent's fixed-height budget depends on needs its own explicit
+  narrow-width check, not just "it rendered fine in the wide dev
+  terminal."
 - **Ad-hoc test scripts for this must live inside `tui/`** (e.g.
   `tui/scratch-repro.tsx`, delete when done) — running `npx tsx` on a file
   outside `tui/` fails with `Cannot find module 'react'` since Node

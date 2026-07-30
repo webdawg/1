@@ -41,47 +41,63 @@ Position math, by category:
 
 ## Layout
 
-Two full-width tiles, stacked vertically, each with an official name
-shown as a dim label in its own bottom-right corner:
+Two full-width **tiles** — that's the official term, used consistently
+in code comments and here — stacked vertically. Each is exactly one
+bordered box; nothing renders outside a tile's own frame. (The sole
+exception is the `~` drop-down console — see the Console section — which
+deliberately draws its own distinct double-border overlay instead of
+living inside either tile, since it represents a different mode
+entirely, not part of the universe/HUD split.) Each tile carries its
+official name as a dim label placed *inside* its own border, in a
+corner:
 
-- **NAVIGATION (top tile) — the universe.** Dynamically sized to fill
-  the actual terminal window (Ink's `useWindowSize`, reacting live to
-  resize). Its main area is a bordered box containing *only* plotted
-  icon+label pairs — no other text (swapped for `ContentView`'s leaf
-  detail screen, or `Console`, when applicable). Below that — inside the
-  same tile, but outside that nested box's own border — a footer row:
-  the currently-focused entry's quick info, centered (`CATEGORY - label
-  — N o'clock, distance` — the all-caps category prefix is
-  `worldTree.ts`'s `getCategoryLabel`, e.g. `PLANET - Earth`, `STAR -
-  TRAPPIST-1`, `EXOPLANET - TRAPPIST-1 b`; updates live as focus moves,
-  blanked mid-transition), and the `NAVIGATION` label, right-aligned.
-  This footer used to live in the HUD tile; moved here so it's paired
-  with what it's actually describing.
+- **NAVIGATION (top tile) — the universe.** One bordered box
+  (`App.tsx`, `borderStyle="round"`, `paddingX={1}`), dynamically sized
+  to fill the actual terminal window (Ink's `useWindowSize`, reacting
+  live to resize). Inside that single frame, top to bottom: the
+  `NAVIGATION` label (its own row, right-aligned — top-right corner);
+  the main content, either `SolarView`'s plotted icon+label grid,
+  `ContentView`'s leaf detail screen, or `WarpTransition`'s cinematic
+  (each renders bare content now, no border of its own — the tile
+  supplies the one frame around all three); and a footer row, the
+  currently-focused entry's quick info, centered (`CATEGORY - label — N
+  o'clock, distance` — the all-caps category prefix is `worldTree.ts`'s
+  `getCategoryLabel`, e.g. `PLANET - Earth`, `STAR - TRAPPIST-1`,
+  `EXOPLANET - TRAPPIST-1 b`; updates live as focus moves, blanked
+  mid-transition). `ContentView`'s own leaf sub-components (`PlanetSurface`,
+  `MoonOrbitLog`, etc.) still draw their own small bordered "card" inside
+  this tile — a nested frame for that detail content, not a second tile.
+  When the console is open, this whole bordered box is skipped entirely
+  in favor of `Console`'s own overlay (see above).
 - **HUD (bottom tile) — everything else.** Fixed height (`App.tsx`'s
   `BOTTOM_PANEL_HEIGHT`, grown as more rows were added — see Time,
-  Gravity, and Velocity below), full width, bordered box containing, in
-  order: the breadcrumb (`Centered on X (Sun > ... > X)`) plus the zoom
-  indicator, the Time row, the Gravity row, the Galactic Gravity
+  Gravity, and Velocity below), full width, one bordered box containing,
+  in order: the breadcrumb (`Centered on X (Sun > ... > X)`) plus the
+  zoom indicator, the Time row, the Gravity row, the Galactic Gravity
   Constant row, the Velocity row, the log (always exactly
-  `MAX_LOG_LINES` rows, blank-padded so the panel's height never varies
-  with content), the `HUD` label (right-aligned, its own row directly
-  above the prompt — as close to "bottom-right corner" as achievable
-  without either embedding it in the log's dynamic content or coupling
-  it into `Prompt.tsx`'s own bordered box), and the command prompt.
+  `MAX_LOG_LINES` rows, padded with a single space rather than an empty
+  string so padding rows don't collapse to zero height — see
+  `DEVELOPMENT.md`), the command prompt, and finally the `HUD` label
+  (right-aligned, the tile's actual last row so it lands in the literal
+  bottom-right corner rather than floating above the prompt).
 
 Position math for the top tile lives in one place — `layout.ts`'s
 `computeGridPositions` — used both by `SolarView` for rendering and by
 `spatialNav.ts` for direction decisions, so they can never disagree about
 where something is.
 
-**Known constraint:** `SolarView`'s box has a border (2 cols) and
-`paddingX={1}` (2 more cols) — `gridWidth` must subtract all 4, not just
-the border. Getting this wrong doesn't error; it silently corrupts the
-box's bottom border in this Ink version. See `DEVELOPMENT.md`. The same
-document also covers a related but distinct pitfall: cramming too much
-into one HUD row can silently wrap and overflow the fixed-height bottom
-tile even without any width-math bug, which is why Time/Gravity/
-Velocity each get their own dedicated row rather than sharing space.
+**Known constraint:** the NAVIGATION tile's own border (2 cols) and
+`paddingX={1}` (2 more cols) are the *only* source of that 4-column
+budget now — `gridWidth` must subtract all 4, not just the border, and
+`SolarView`/`WarpTransition` must stay border-less so that budget isn't
+double-counted. Getting this wrong doesn't error; it silently corrupts
+the box's bottom border in this Ink version. See `DEVELOPMENT.md`. The
+same document also covers a related but distinct pitfall: cramming too
+much into one HUD row can silently wrap and overflow the fixed-height
+bottom tile even without any width-math bug, which is why Time/Gravity/
+Velocity each get their own dedicated row rather than sharing space —
+and why `Prompt.tsx`'s inactive hint text is kept deliberately short
+(it lives inside a height-budgeted tile too).
 
 ## Zoom
 
