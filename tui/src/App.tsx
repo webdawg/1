@@ -38,7 +38,8 @@ import {
   formatGravity,
   formatGravityFormula,
   formatUniverseAge,
-  formatUniverseAgeCompact,
+  formatUniverseAgeCompactDetailed,
+  formatUtcOffset,
   formatVelocity,
   GALACTIC_GRAVITY_MPS2,
   GALACTIC_ORBITAL_SPEED_MPS,
@@ -149,9 +150,11 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   );
   const [tick, setTick] = useState(0);
   const lastDriftTickMsRef = useRef<number>(Date.now());
-  // Ticks every second, independent of the coarser 5s position/drift tick
-  // above — just for the always-visible HUD clock (bottom-right), so it
-  // visibly runs rather than jumping in 5s steps.
+  // Ticks every 100ms, independent of the coarser 5s position/drift tick
+  // above — just for the always-visible HUD clock, so it visibly runs
+  // rather than jumping in 5s steps. 100ms (not 1s) specifically so the
+  // universe-age detail's milliseconds field (formatUniverseAgeCompactDetailed)
+  // visibly ticks instead of jumping in 1000ms steps.
   const [clockNow, setClockNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -168,7 +171,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   useEffect(() => {
     const id = setInterval(() => {
       if (!pausedRef.current) setClockNow(new Date());
-    }, 1000);
+    }, 100);
     return () => clearInterval(id);
   }, []);
 
@@ -449,11 +452,16 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         pushLog(`Session: ${sessionRef.current.sessionId}`);
         break;
       case "time": {
+        // Four short, single-line entries — as with /help, a longer combined
+        // string here wraps and silently overflows the HUD's fixed log
+        // height (see DEVELOPMENT.md's Ink gotchas); centerLabel's length
+        // varies (up to ~18 chars for the longest curated star/exoplanet
+        // names), so each line was measured against that worst case, not
+        // just today's label.
         pushLog(`Time 1 — Actual: ${now.toLocaleString()}`);
-        pushLog(`Time 2 — Universe: ${formatUniverseAge(universeAgeSeconds(now))} since the Big Bang`);
-        pushLog(
-          `Time 3 — Drift: both clocks ${formatDriftMs(sessionRef.current.timeDriftMs)} vs. actual (from time spent at ${centerLabel} — no gravity well in transit, so jumps add none)`
-        );
+        pushLog(`Time 2 — Universe: ${formatUniverseAge(universeAgeSeconds(now))} (Big Bang)`);
+        pushLog(`Time 3 — Drift: ${formatDriftMs(sessionRef.current.timeDriftMs)} vs. actual, at ${centerLabel}`);
+        pushLog("(no drift accumulates during a SOLAR BASE JUMP)");
         break;
       }
       case "quit":
@@ -544,7 +552,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
             : " "}
         </Text>
         <Text dimColor>
-          Time: {clockNow.toLocaleTimeString()} · {formatUniverseAgeCompact(universeAgeSeconds(clockNow))} ·{" "}
+          Time: {clockNow.toLocaleTimeString()} {formatUtcOffset(clockNow)} · {formatUniverseAgeCompactDetailed(clockNow)} ·{" "}
           {formatDriftMs(sessionRef.current.timeDriftMs)}
         </Text>
         <Text dimColor>

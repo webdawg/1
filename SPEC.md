@@ -435,19 +435,44 @@ measurably over that many seconds.
 
 **Display**: `App.tsx`'s bottom panel shows all three times *continuously*
 on their own dedicated row (not just via `time`) — actual time
-(`HH:MM:SS`, ticking every second off its own dedicated `clockNow`
-interval, deliberately separate from the coarser 5s position/drift tick
-so the clock visibly runs), a compact universe age
-(`formatUniverseAgeCompact`, e.g. `13.797B yrs` — the full
-years/days/H:M:S breakdown is `formatUniverseAge`, reserved for the
-`time` command's more detailed output), and the current drift
-(`formatDriftMs`, read directly off `sessionRef.current.timeDriftMs`).
-Visible on every screen, including leaf views and mid-jump. This row
-originally shared the breadcrumb row's right-hand corner with the zoom
-indicator; that wrapped at 80 columns (an entirely ordinary terminal
-width) and silently overflowed the bottom panel's fixed, `overflow:
-hidden` height, so it was moved to its own row — see Gravity below,
-which follows the same one-row-per-concern shape.
+(`HH:MM:SS` plus a UTC offset like `UTC-7`/`UTC+5:30`,
+`relativity.ts`'s `formatUtcOffset`), a detailed universe age
+(`formatUniverseAgeCompactDetailed`, e.g.
+`13.797B yrs.211d 16:19:20.953` — the billions-of-years figure from
+`formatUniverseAgeCompact`, plus a `.` and a day/H:M:S.mmm remainder
+that visibly ticks), and the current drift (`formatDriftMs`, read
+directly off `sessionRef.current.timeDriftMs`). Visible on every
+screen, including leaf views and mid-jump.
+
+Both new pieces are HUD-only — the `time` command's own Time 1/Time 2
+output is untouched (no timezone, no millisecond detail; still
+`now.toLocaleString()` and the full `formatUniverseAge` years/days/H:M:S
+breakdown). The row's own dedicated `clockNow` interval runs every
+**100ms**, not 1s, specifically so the new millisecond field visibly
+ticks rather than jumping in 1000ms steps — still independent of the
+coarser 5s position/drift tick, and still gated by `pausedRef` so
+`/pause` freezes it completely (see Pause below).
+
+`formatUniverseAgeCompactDetailed` deliberately does **not** derive its
+remainder from `formatUniverseAge`'s breakdown of the huge
+`universeAgeSeconds()` total (~4.35e17 seconds): a float64's precision
+near that magnitude only resolves to about ±64 seconds — fine for
+`formatUniverseAge`/`formatUniverseAgeCompact`'s coarse output, but it
+would make a millisecond field that silently never changes (caught via
+a throwaway `npx tsx` check before this shipped — two calls 300ms apart
+produced byte-identical output). Instead it re-derives the remainder
+directly from `now` — elapsed real seconds since the fixed
+`REFERENCE_EPOCH_MS` anchor, a small number with full float
+precision — never summed into the huge total. Its "days" therefore
+counts elapsed days since that anchor (mod one Julian year), not days
+into whichever billion-year bucket `formatUniverseAge`'s total lands
+in; the two fields aren't meant to be read side by side.
+
+This row originally shared the breadcrumb row's right-hand corner with
+the zoom indicator; that wrapped at 80 columns (an entirely ordinary
+terminal width) and silently overflowed the bottom panel's fixed,
+`overflow: hidden` height, so it was moved to its own row — see Gravity
+below, which follows the same one-row-per-concern shape.
 
 ## Gravity
 

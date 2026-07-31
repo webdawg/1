@@ -324,6 +324,42 @@ again to resume. `SPEC.md`'s Pause and Keys-and-commands sections,
 pre-pause wording, since pause is no longer a key worth advertising
 there) were all updated to match.
 
+Also added this session: a UTC offset on the HUD's actual-time reading
+(`relativity.ts`'s `formatUtcOffset`, e.g. `UTC-7`/`UTC+5:30` — computed
+directly from `getTimezoneOffset()` rather than `Intl`'s
+`timeZoneName: "shortOffset"`, which formats as `GMT±H`, not `UTC±H`),
+and a fast-ticking detail on the HUD's universe-age reading
+(`formatUniverseAgeCompactDetailed`, e.g.
+`13.797B yrs.211d 16:19:20.953`) since the plain billions-of-years
+figure barely visibly moves within a play session. HUD-only by explicit
+user decision — the `time` command's own output is untouched. Hit a
+real bug building the detail field: naively reusing `formatUniverseAge`'s
+breakdown of the huge `universeAgeSeconds()` total (~4.35e17 seconds)
+produced a millisecond field that silently never changed, since a
+float64's precision near that magnitude only resolves to about ±64
+seconds — caught via a throwaway `npx tsx` check (two calls 300ms apart
+came back byte-identical) before it shipped, not by visual inspection.
+Fixed by re-deriving the remainder from elapsed real seconds since a
+fixed reference epoch directly (a small number, full float precision)
+instead of ever summing it into the huge total. The HUD's dedicated
+clock interval was also sped up from 1s to 100ms so the millisecond
+field actually ticks rather than jumping in 1000ms steps; still gated
+by the same `pausedRef` `/pause` already used, confirmed via tmux to
+still freeze completely. Also separately found and fixed (flagged to
+the user first, since it was unrelated to this session's scoped work,
+then fixed on request): the `time` command's own Time 2/Time 3 log
+lines were long enough to wrap at 80 columns and corrupt the breadcrumb
+row and Prompt border below them — the same class of bug `/help` hit
+and was fixed for earlier this session. Fixed the same way: shortened
+wording (dropped "since"/"both clocks"/the in-line jump-drift aside)
+plus a new fourth short log line for the jump-drift note that no longer
+fit inline, each independently checked against the longest curated
+center label (a composed breadcrumb-style label like "Nearby Stars —
+Teegarden's Star", not just the raw star name — the actual worst case,
+found by testing at that label rather than assuming a short one).
+Verified via the session-file-resume technique to reach that label
+directly, at both 80 and wide columns.
+
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,
 tests).

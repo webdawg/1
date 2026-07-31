@@ -53,6 +53,57 @@ export function formatUniverseAgeCompact(seconds: number): string {
 }
 
 /**
+ * formatUniverseAgeCompact's billions-of-years figure barely moves within a
+ * play session — this appends a "." and a day/H:M:S.mmm remainder so the
+ * HUD's Time row visibly ticks continuously instead of looking static.
+ *
+ * Deliberately does NOT reuse formatUniverseAge's breakdown of the full
+ * universeAgeSeconds() total: that total is ~4.35e17 seconds, and a
+ * float64's precision near that magnitude only resolves to about ±64
+ * seconds (the ULP of summing a huge number with a small one) — fine for
+ * formatUniverseAge/formatUniverseAgeCompact's coarse output, but it would
+ * make a millisecond field that never actually changes. Instead this
+ * re-derives the remainder from `now` directly — elapsed real seconds since
+ * the fixed REFERENCE_EPOCH_MS anchor, a small number with full float
+ * precision — never summed into the huge total at all. Its "days" therefore
+ * counts elapsed days since REFERENCE_EPOCH_MS (mod one Julian year), not
+ * days into whichever billion-year bucket formatUniverseAge's total lands
+ * in; the two aren't meant to be read side by side.
+ */
+export function formatUniverseAgeCompactDetailed(now: Date): string {
+  const elapsedSeconds = (now.getTime() - REFERENCE_EPOCH_MS) / 1000;
+  const yearsElapsed = Math.floor(elapsedSeconds / SECONDS_PER_JULIAN_YEAR);
+  let remainder = elapsedSeconds - yearsElapsed * SECONDS_PER_JULIAN_YEAR;
+  const days = Math.floor(remainder / 86400);
+  remainder -= days * 86400;
+  const hours = Math.floor(remainder / 3600);
+  remainder -= hours * 3600;
+  const minutes = Math.floor(remainder / 60);
+  remainder -= minutes * 60;
+  const secs = Math.floor(remainder);
+  const milliseconds = Math.floor((remainder - secs) * 1000);
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const pad3 = (n: number) => String(n).padStart(3, "0");
+  return `${formatUniverseAgeCompact(universeAgeSeconds(now))}.${days}d ${pad2(hours)}:${pad2(minutes)}:${pad2(secs)}.${pad3(milliseconds)}`;
+}
+
+/**
+ * A UTC offset like "UTC-7" or "UTC+5:30" — computed directly from
+ * getTimezoneOffset() rather than Intl's timeZoneName: "shortOffset",
+ * which formats as "GMT±H" per the ECMA-402 spec, not "UTC±H".
+ */
+export function formatUtcOffset(date: Date): string {
+  // getTimezoneOffset() is positive west of UTC (backwards from the usual
+  // UTC+/-N convention), so negate it.
+  const totalMinutes = -date.getTimezoneOffset();
+  const sign = totalMinutes >= 0 ? "+" : "-";
+  const absMinutes = Math.abs(totalMinutes);
+  const hours = Math.floor(absMinutes / 60);
+  const minutes = absMinutes % 60;
+  return minutes === 0 ? `UTC${sign}${hours}` : `UTC${sign}${hours}:${String(minutes).padStart(2, "0")}`;
+}
+
+/**
  * What a node needs, physically, to compute its gravitational time
  * dilation: its own local surface gravity/radius (a planet, or a star —
  * null if unknown/not applicable), and its system star's gravity/radius
