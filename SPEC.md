@@ -438,48 +438,51 @@ measurably over that many seconds.
 bracketed group:
 
 - `[GALACTIC TIMES - ...]` — actual time (`HH:MM:SS` plus a UTC offset
-  like `UTC-7`/`UTC+5:30`, `relativity.ts`'s `formatUtcOffset`) and a
-  detailed universe age (`formatUniverseAgeCompactDetailed`, e.g.
-  `13.797B yrs.211d 16:19:20.953` — the billions-of-years figure from
-  `formatUniverseAgeCompact`, plus a `.` and a day/H:M:S.mmm remainder
-  that visibly ticks), e.g. `[GALACTIC TIMES - 1:07:35 PM UTC-4 · 13.797B
-  yrs.211d 17:07:35.923]`.
+  like `UTC-7`/`UTC+5:30`, `relativity.ts`'s `formatUtcOffset`) and the
+  universe age as an exact whole-seconds count since the Big Bang
+  (`formatUniverseAgeSeconds`, comma-grouped, e.g.
+  `435,400,207,218,294,234s`), e.g. `[GALACTIC TIMES - 1:43:54 PM UTC-4 ·
+  435,400,207,218,294,234s]`. Per the user's explicit choice — "just the
+  seconds and that is it" — over the years/days/H:M:S.mmm breakdown an
+  earlier version of this row showed.
 - `[ACCUMULATED DILATION - ...]` — the current drift (`formatDriftMs`, read directly
   off `sessionRef.current.timeDriftMs`), e.g. `[ACCUMULATED DILATION - -197.334ns]`.
 
 Two rows, not one: the combined single-line form (`[GALACTIC TIMES -
-...] [ACCUMULATED DILATION - ...]`) runs to ~91 characters at typical values, well
-past the ~76-character content-width budget at 80 columns — the exact
-overflow-corruption class this session kept hitting elsewhere
-(`DEVELOPMENT.md`'s Ink gotchas). Splitting into two rows was the
-user's explicit choice over shortening either bracket's contents (which
-would have meant losing precision from the just-added millisecond
-detail). Both rows are visible on every screen, including leaf views
-and mid-jump.
+...] [ACCUMULATED DILATION - ...]`) runs past the ~76-character
+content-width budget at 80 columns — the exact overflow-corruption class
+this session kept hitting elsewhere (`DEVELOPMENT.md`'s Ink gotchas).
+Splitting into two rows was the user's explicit choice over shortening
+either bracket's contents. Both rows are visible on every screen,
+including leaf views and mid-jump.
 
 Both new pieces are HUD-only — the `time` command's own Time 1/Time 2
-output is untouched (no timezone, no millisecond detail; still
+output is untouched (no timezone, no whole-seconds count; still
 `now.toLocaleString()` and the full `formatUniverseAge` years/days/H:M:S
-breakdown). The row's own dedicated `clockNow` interval runs every
-**100ms**, not 1s, specifically so the new millisecond field visibly
-ticks rather than jumping in 1000ms steps — still independent of the
-coarser 5s position/drift tick, and still gated by `pausedRef` so
-`/pause` freezes it completely (see Pause below).
+breakdown). The row's own dedicated `clockNow` interval runs every 1s —
+independent of the coarser 5s position/drift tick, still gated by
+`pausedRef` so `/pause` freezes it completely (see Pause below).
 
-`formatUniverseAgeCompactDetailed` deliberately does **not** derive its
-remainder from `formatUniverseAge`'s breakdown of the huge
-`universeAgeSeconds()` total (~4.35e17 seconds): a float64's precision
-near that magnitude only resolves to about ±64 seconds — fine for
-`formatUniverseAge`/`formatUniverseAgeCompact`'s coarse output, but it
-would make a millisecond field that silently never changes (caught via
-a throwaway `npx tsx` check before this shipped — two calls 300ms apart
-produced byte-identical output). Instead it re-derives the remainder
-directly from `now` — elapsed real seconds since the fixed
-`REFERENCE_EPOCH_MS` anchor, a small number with full float
-precision — never summed into the huge total. Its "days" therefore
-counts elapsed days since that anchor (mod one Julian year), not days
-into whichever billion-year bucket `formatUniverseAge`'s total lands
-in; the two fields aren't meant to be read side by side.
+**Precision**: `relativity.ts`'s `universeAgeWholeSeconds` computes the
+whole-seconds count via `bigint` arithmetic, not `universeAgeSeconds`'s
+float64 total (~4.35e17 seconds) — a float64's precision near that
+magnitude only resolves to about ±64 seconds (the ULP of summing a huge
+number with a small one), so a display built on it would sit frozen for
+up to a minute at a time rather than ticking every second (confirmed
+directly: two calls 300ms apart came back bit-for-bit identical, before
+this was caught and fixed). `bigint` has no such limit:
+`SECONDS_PER_JULIAN_YEAR` is exactly representable as an integer
+(`365.25 × 86400 = 31,557,600`, no fractional remainder), so the huge
+reference-age term converts to `bigint` exactly, and only the small,
+already-precise elapsed-seconds term needs adding to it — no precision
+lost anywhere in the sum. An earlier version of this row
+(`formatUniverseAgeCompactDetailed`, since removed along with
+`formatUniverseAgeCompact`) showed a billions-of-years figure plus a
+day/H:M:S.mmm remainder computed the same float64-based way and hit
+this exact wall — worth remembering if this resurfaces: **any** display
+meant to visibly tick off of `universeAgeSeconds()`'s total hits this
+same wall, not just the
+specific field that hit it originally.
 
 This row originally shared the breadcrumb row's right-hand corner with
 the zoom indicator; that wrapped at 80 columns (an entirely ordinary

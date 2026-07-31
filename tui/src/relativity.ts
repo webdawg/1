@@ -46,45 +46,27 @@ export function formatUniverseAge(seconds: number): string {
   return `${years.toLocaleString("en-US")} years, ${days} days, ${pad(hours)}:${pad(minutes)}:${pad(secs)}`;
 }
 
-/** A short form for persistent display (the HUD corner) — formatUniverseAge's full breakdown is too long to show at all times. */
-export function formatUniverseAgeCompact(seconds: number): string {
-  const billionYears = seconds / SECONDS_PER_JULIAN_YEAR / 1_000_000_000;
-  return `${billionYears.toFixed(3)}B yrs`;
+/**
+ * Exact whole seconds since the Big Bang, as a bigint. universeAgeSeconds()
+ * (a float64) can't answer this: at ~4.35e17 seconds, float64 precision
+ * only resolves to about ±64 seconds (the ULP of summing a huge number with
+ * a small one), so a display built on it would sit frozen for up to a
+ * minute at a time instead of ticking every second — confirmed directly (a
+ * throwaway check: two calls 300ms apart came back bit-for-bit identical).
+ * bigint arithmetic has no such limit: SECONDS_PER_JULIAN_YEAR is exactly
+ * representable as an integer (365.25 * 86400 = 31,557,600, no fractional
+ * remainder), so the reference age converts to bigint exactly, and only
+ * the small, already-precise elapsed-seconds term gets added to it.
+ */
+export function universeAgeWholeSeconds(now: Date): bigint {
+  const ageAtReference = BigInt(AGE_OF_UNIVERSE_YEARS_AT_REFERENCE) * BigInt(SECONDS_PER_JULIAN_YEAR);
+  const elapsedWholeSeconds = BigInt(Math.floor((now.getTime() - REFERENCE_EPOCH_MS) / 1000));
+  return ageAtReference + elapsedWholeSeconds;
 }
 
-/**
- * formatUniverseAgeCompact's billions-of-years figure barely moves within a
- * play session — this appends a "." and a day/H:M:S.mmm remainder so the
- * HUD's Time row visibly ticks continuously instead of looking static.
- *
- * Deliberately does NOT reuse formatUniverseAge's breakdown of the full
- * universeAgeSeconds() total: that total is ~4.35e17 seconds, and a
- * float64's precision near that magnitude only resolves to about ±64
- * seconds (the ULP of summing a huge number with a small one) — fine for
- * formatUniverseAge/formatUniverseAgeCompact's coarse output, but it would
- * make a millisecond field that never actually changes. Instead this
- * re-derives the remainder from `now` directly — elapsed real seconds since
- * the fixed REFERENCE_EPOCH_MS anchor, a small number with full float
- * precision — never summed into the huge total at all. Its "days" therefore
- * counts elapsed days since REFERENCE_EPOCH_MS (mod one Julian year), not
- * days into whichever billion-year bucket formatUniverseAge's total lands
- * in; the two aren't meant to be read side by side.
- */
-export function formatUniverseAgeCompactDetailed(now: Date): string {
-  const elapsedSeconds = (now.getTime() - REFERENCE_EPOCH_MS) / 1000;
-  const yearsElapsed = Math.floor(elapsedSeconds / SECONDS_PER_JULIAN_YEAR);
-  let remainder = elapsedSeconds - yearsElapsed * SECONDS_PER_JULIAN_YEAR;
-  const days = Math.floor(remainder / 86400);
-  remainder -= days * 86400;
-  const hours = Math.floor(remainder / 3600);
-  remainder -= hours * 3600;
-  const minutes = Math.floor(remainder / 60);
-  remainder -= minutes * 60;
-  const secs = Math.floor(remainder);
-  const milliseconds = Math.floor((remainder - secs) * 1000);
-  const pad2 = (n: number) => String(n).padStart(2, "0");
-  const pad3 = (n: number) => String(n).padStart(3, "0");
-  return `${formatUniverseAgeCompact(universeAgeSeconds(now))}.${days}d ${pad2(hours)}:${pad2(minutes)}:${pad2(secs)}.${pad3(milliseconds)}`;
+/** The HUD's GALACTIC TIMES universe-age reading — the exact whole-seconds count, comma-grouped, ticking every real second. */
+export function formatUniverseAgeSeconds(now: Date): string {
+  return `${universeAgeWholeSeconds(now).toLocaleString("en-US")}s`;
 }
 
 /**

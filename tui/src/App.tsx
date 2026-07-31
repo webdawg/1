@@ -38,7 +38,7 @@ import {
   formatGravity,
   formatGravityFormula,
   formatUniverseAge,
-  formatUniverseAgeCompactDetailed,
+  formatUniverseAgeSeconds,
   formatUtcOffset,
   formatVelocity,
   GALACTIC_GRAVITY_MPS2,
@@ -151,11 +151,9 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   );
   const [tick, setTick] = useState(0);
   const lastDriftTickMsRef = useRef<number>(Date.now());
-  // Ticks every 100ms, independent of the coarser 5s position/drift tick
+  // Ticks every second, independent of the coarser 5s position/drift tick
   // above — just for the always-visible HUD clock, so it visibly runs
-  // rather than jumping in 5s steps. 100ms (not 1s) specifically so the
-  // universe-age detail's milliseconds field (formatUniverseAgeCompactDetailed)
-  // visibly ticks instead of jumping in 1000ms steps.
+  // rather than jumping in 5s steps.
   const [clockNow, setClockNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -172,7 +170,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   useEffect(() => {
     const id = setInterval(() => {
       if (!pausedRef.current) setClockNow(new Date());
-    }, 100);
+    }, 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -577,7 +575,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         </Text>
         <Text dimColor>
           [GALACTIC TIMES - {clockNow.toLocaleTimeString()} {formatUtcOffset(clockNow)} ·{" "}
-          {formatUniverseAgeCompactDetailed(clockNow)}]
+          {formatUniverseAgeSeconds(clockNow)}]
         </Text>
         <Text dimColor>[ACCUMULATED DILATION - {formatDriftMs(sessionRef.current.timeDriftMs)}]</Text>
         <Text dimColor>

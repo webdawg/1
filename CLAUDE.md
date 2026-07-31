@@ -391,6 +391,29 @@ state, breadcrumb and all, and normal navigation (Escape back to Sun)
 kept working afterward; also confirmed a bad id/key pair leaves the
 current session untouched.
 
+Also simplified this session, per the user's explicit ask ("just the
+seconds and that is it"): GALACTIC TIMES' universe-age reading dropped
+the billions-of-years/day/H:M:S.mmm breakdown in favor of a single
+exact whole-seconds-since-the-Big-Bang count, comma-grouped (e.g.
+`435,400,207,218,294,234s`), ticking by 1 every real second. Getting
+"ticks every second" actually right needed a different underlying
+representation, not just a different format string: the naive version
+(reading the count straight off the existing `universeAgeSeconds()`
+float64 total) came back bit-for-bit frozen across a 300ms test — the
+same float64 precision wall discovered earlier this session while
+building the now-removed millisecond field, this time biting the whole
+seconds digit instead of just milliseconds. Fixed with `bigint`
+arithmetic instead (`universeAgeWholeSeconds`): the huge reference age
+converts to `bigint` exactly since `SECONDS_PER_JULIAN_YEAR` has no
+fractional part, so only the small, already-precise elapsed-seconds
+term needs adding — confirmed via a throwaway script ticking cleanly by
+exactly 1 across three real seconds. `formatUniverseAgeCompactDetailed`
+and `formatUniverseAgeCompact` were removed outright (nothing else
+called them); the HUD's `clockNow` interval also reverted from 100ms
+back to 1s, since nothing sub-second is displayed anymore. Verified via
+tmux at both 80 and wide columns, shown to the user as a mockup before
+committing per their request.
+
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,
 tests).
