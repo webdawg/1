@@ -131,6 +131,11 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   );
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>("approach");
   const [mode, setMode] = useState<"nav" | "command">("nav");
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
   const [promptValue, setPromptValue] = useState("");
   const [playerType, setPlayerType] = useState<PlayerType>(session.playerType);
   const [consoleOpen, setConsoleOpen] = useState(false);
@@ -150,12 +155,20 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   const [clockNow, setClockNow] = useState(() => new Date());
 
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), TICK_MS);
+    // Paused freezes everything on screen (positions, drift, the clock) so
+    // the player can select/copy text without it changing under them — the
+    // interval keeps running, but skips the state update that would
+    // otherwise trigger a re-render.
+    const id = setInterval(() => {
+      if (!pausedRef.current) setTick((t) => t + 1);
+    }, TICK_MS);
     return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
-    const id = setInterval(() => setClockNow(new Date()), 1000);
+    const id = setInterval(() => {
+      if (!pausedRef.current) setClockNow(new Date());
+    }, 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -300,6 +313,16 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
   useInput(
     (input, key) => {
+      // Paused freezes the whole screen for copy/paste — while paused, only
+      // the unpause keys do anything, so the display genuinely stays still.
+      if (paused) {
+        if (input === "p" || key.escape) setPaused(false);
+        return;
+      }
+      if (input === "p") {
+        setPaused(true);
+        return;
+      }
       if (key.leftArrow) {
         setFocusedId((id) => pickNextFocus(children, positions, id, "left"));
         return;
@@ -385,9 +408,14 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
     switch (cmd.toLowerCase()) {
       case "help":
-        pushLog(
-          "Commands: help, back, save <text>, notes, whoami, time, quit. Press ~ to open the console (change player type: become llm / become human)."
-        );
+        // Four short, single-line entries — MAX_LOG_LINES only budgets one
+        // rendered row per log entry, and a longer string here would wrap
+        // and silently overflow the HUD's fixed height (see DEVELOPMENT.md's
+        // Ink gotchas).
+        pushLog("Keys: arrows move/select, enter travel, esc/backspace back, +/- zoom");
+        pushLog("p pause (freezes screen for copy/paste), ~ console, / or : commands");
+        pushLog("Commands: help, back, save <text>, notes, whoami, time, quit/exit");
+        pushLog("Console (~): help, become llm, become human, close/exit");
         break;
       case "back": {
         if (!goBack()) pushLog(`Already at ${centerLabel}.`);
@@ -490,9 +518,11 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
       <Box flexDirection="column" borderStyle="round" paddingX={1} height={BOTTOM_PANEL_HEIGHT} width={cols} overflow="hidden">
         <Box justifyContent="space-between">
           <Text bold>{playerType}</Text>
-          <Text color={transition ? "yellow" : undefined} bold={Boolean(transition)}>
+          <Text color={transition ? "yellow" : paused ? "yellow" : undefined} bold={Boolean(transition) || paused}>
             {transition ? (
               PHASE_MESSAGES[transitionPhase](transition.label)
+            ) : paused ? (
+              "PAUSED — press p or esc to resume"
             ) : (
               <>
                 Centered on <Text bold>{centerLabel}</Text>

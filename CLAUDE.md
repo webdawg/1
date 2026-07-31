@@ -63,8 +63,10 @@ purpose shifts or a new one is added.
 
 - `src/index.tsx` — entry point, session bootstrap.
 - `src/App.tsx` — main loop: arrow-key navigation, `/`-command mode
-  (`help`, `back`, `save <text>`, `notes`, `whoami`, `time`, `quit`), local
-  session persistence via `session.ts`. Renders the two official tiles —
+  (`help`, `back`, `save <text>`, `notes`, `whoami`, `time`, `quit`), `p`
+  to pause (freezes the screen for copy/paste — see `SPEC.md`'s Pause
+  section), local session persistence via `session.ts`. Renders the two
+  official tiles —
   each one a single bordered box with nothing outside its own frame
   (the `~` console is the sole exception, its own floating overlay):
   NAVIGATION (top), labeled top-right, with the focused-entry footer
@@ -282,6 +284,29 @@ hand-crafted session file (`~/.solar-tui/sessions/*.json` +
 faster and more reliable than navigating that deep via arrow keys — plus
 the real 5-segment case (a moon's Surface leaf) and the original
 4-segment repro, at both 80 and wide columns.
+
+Also added this session: a `p` pause key so the player can select and
+copy text out of the terminal without it changing mid-selection — the
+always-ticking HUD clock and the coarser 5s position/drift tick meant
+nothing stayed visually still for long otherwise. Implemented by gating
+both interval callbacks on a `pausedRef` (the timers keep firing, they
+just skip the state update) and having the main nav `useInput` swallow
+every key except `p`/Escape while paused, so the frame is genuinely
+frozen rather than just visually stale. Time dilation drift doesn't
+accumulate while paused, by the same reasoning a SOLAR BASE JUMP already
+gets no relativistic effect — see `SPEC.md`'s new Pause section. Also
+added, since the project had no single place documenting every key
+(only a short `Prompt.tsx` hint and a one-line `/help`): `SPEC.md`'s
+"Commands" section became "Keys and commands," now the canonical list
+of every nav-mode key, command-mode command, and Console command in one
+place; `/help` itself was split into four short single-line `pushLog`
+calls (a long combined string was tried first and immediately hit the
+documented Ink wrap/overflow gotcha — corrupted the breadcrumb row and
+the Prompt's own border — see `DEVELOPMENT.md`) rather than one long
+one. Verified via tmux at both 80 and wide columns: pause freezing the
+clock across several real seconds, arrow keys doing nothing while
+paused, both `p` and Escape resuming it, and `/help`'s new output
+rendering cleanly with no border corruption at 80 columns.
 
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,

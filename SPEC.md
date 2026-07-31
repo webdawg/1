@@ -531,19 +531,66 @@ fails immediately rather than silently starting a new session. Notes are
 freeform per-node-id text arrays, saved via the `save <text>` command and
 persisted the same way.
 
-## Commands
+## Keys and commands
 
-`/` or `:` enters command mode. `help`, `back`, `save <text>`, `notes`,
-`whoami`, `time`, `quit`/`exit`. Unknown commands log an error and
-return to nav mode. `~` (available directly from nav mode, no `/`
-needed) opens the Console instead — see Console above for its own
-separate command set (`become llm`, `become human`, ...).
+The full input surface, kept in one place so nothing is discoverable
+only by accident. This is the canonical reference — `App.tsx`'s `help`
+case and `Prompt.tsx`'s persistent hint text are both meant to summarize
+it, not define it, so update this section first when either changes.
 
-Discoverability: nothing in the UI required a player to already know
+**Nav-mode keys** (`App.tsx`'s main `useInput`, active whenever not
+paused, not mid-transition, not in command mode, and the console isn't
+open):
+
+- Arrow keys — move focus to whichever entry is actually positioned in
+  that direction on screen (`spatialNav.ts`; see Spatial navigation
+  above).
+- Enter — travel to the focused entry (or, on the star-map exit entry,
+  travel back out through the current star).
+- Escape / Backspace — go back one level (`goBack()`).
+- `+`/`=` and `-`/`_` — zoom in/out (see Zoom above); no effect on a
+  leaf's `ContentView` screen.
+- `p` — toggle pause (see Pause below).
+- `~` — open the Console (see Console above).
+- `/` or `:` — enter command mode.
+
+**Command mode** (`/` or `:` then Enter): `help`, `back`, `save <text>`,
+`notes`, `whoami`, `time`, `quit`/`exit`. Unknown commands log an error
+and return to nav mode.
+
+**Console** (`~`, its own separate mode — see Console above): `help`,
+`become llm`, `become human`, `close`/`exit`; Escape also closes it.
+
+Discoverability: nothing in the UI requires a player to already know
 `help` existed. The persistent bottom-prompt hint (`Prompt.tsx`, shown
-whenever not actively typing a command) lists `~` alongside the other
-keys; `/help`'s own response now also mentions `~` and the console;
-and every "unknown command" message — in both the main command mode
-(`App.tsx`) and inside the Console (`Console.tsx`) — points back to
-`help` rather than just failing silently, so a mistyped command is
-itself the way a player finds the real command list.
+whenever not actively typing a command) lists every nav-mode key; `help`
+itself expands on that (split across several short `pushLog` lines —
+see the Pause section's note on why a single long help string can't be
+used); and every "unknown command" message — in both the main command
+mode (`App.tsx`) and inside the Console (`Console.tsx`) — points back to
+`help` rather than just failing silently.
+
+## Pause
+
+`p`, from nav mode, freezes the whole screen so the player can select
+and copy text out of the terminal without it changing mid-selection —
+without this, the always-ticking HUD clock (its own 1s interval) and
+the coarser 5s position/drift tick mean nothing on screen stays still
+for long. Implementation (`App.tsx`): a `paused` boolean gates both
+interval callbacks (`if (!pausedRef.current) setX(...)`, read via a ref
+kept in sync with the state so the already-running `setInterval`
+doesn't need to be torn down and recreated) — the timers keep firing,
+they just skip the state update that would otherwise trigger a
+re-render or advance anything. The same `useInput` handler that owns
+the other nav-mode keys checks `paused` first: while paused, every key
+except `p` and Escape is swallowed (arrows don't move focus, Enter
+doesn't travel, zoom doesn't change), so the frozen frame is genuinely
+frozen, not just visually stale. A side effect worth being deliberate
+about: since the drift-accumulation effect is keyed off the same tick
+that pause suppresses, gravitational time dilation does not accumulate
+while paused — the same "no relativistic effect" treatment a SOLAR BASE
+JUMP already gets (`SPEC.md`'s Time section), for the same underlying
+reason (nothing advances during a deliberate non-gameplay freeze).
+Shown via a `PAUSED — press p or esc to resume` message that takes over
+the HUD's `Centered on X` slot (the same slot a SOLAR BASE JUMP's phase
+message already borrows), bold and yellow like the transition message.

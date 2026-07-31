@@ -137,6 +137,18 @@ touching box sizing in `SolarView.tsx`/`App.tsx` again:
   width the dev tmux session happens to default to; the fix here was
   giving Time (and later Gravity) each their own dedicated row instead
   of sharing space in a already-busy corner.
+  **Confirmed to recur**: a single long `/help` string (meant to list
+  every key and command in one `pushLog` call) wrapped inside the
+  scrolling log rows, which have no per-entry width guard the way
+  Time/Gravity/Velocity's dedicated rows do — the log budgets exactly
+  one rendered row per `pushLog` call (`MAX_LOG_LINES`), so a wrapped
+  entry overflowed it and corrupted the breadcrumb row and the Prompt's
+  own border below it. Fixed by splitting into four short strings, each
+  independently verified to fit one line at 80 columns, rather than one
+  long one. Lesson: this gotcha applies to *any* dynamically-composed
+  `Text` inside a fixed-budget row, not just the specific HUD rows it
+  was first found on — a scrolling log entry is just as vulnerable as a
+  static label.
 - **A `<Text>` whose entire content is the empty string (`""`) renders
   at zero height in this Ink version, instead of a normal blank line.**
   Inside a box with a fixed `height`, this doesn't error — it just makes
