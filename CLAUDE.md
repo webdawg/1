@@ -63,10 +63,10 @@ purpose shifts or a new one is added.
 
 - `src/index.tsx` — entry point, session bootstrap.
 - `src/App.tsx` — main loop: arrow-key navigation, `/`-command mode
-  (`help`, `back`, `save <text>`, `notes`, `whoami`, `time`, `quit`), `p`
-  to pause (freezes the screen for copy/paste — see `SPEC.md`'s Pause
-  section), local session persistence via `session.ts`. Renders the two
-  official tiles —
+  (`help`, `back`, `save <text>`, `notes`, `whoami`, `time`, `pause`,
+  `quit`) — `pause` freezes the screen for copy/paste, see `SPEC.md`'s
+  Pause section — local session persistence via `session.ts`. Renders
+  the two official tiles —
   each one a single bordered box with nothing outside its own frame
   (the `~` console is the sole exception, its own floating overlay):
   NAVIGATION (top), labeled top-right, with the focused-entry footer
@@ -307,6 +307,22 @@ one. Verified via tmux at both 80 and wide columns: pause freezing the
 clock across several real seconds, arrow keys doing nothing while
 paused, both `p` and Escape resuming it, and `/help`'s new output
 rendering cleanly with no border corruption at 80 columns.
+
+Also fixed this session: pause was switched from the bare `p` key above
+to a `/pause` command instead, per direct user feedback — a bare key
+risks accidentally firing during ordinary nav-mode play (a stray
+keypress while looking around) in a way a slash command can't, and it
+now matches every other non-movement action (`save`, `time`, `quit`,
+...) already being a command rather than a hotkey. (Confirmed via tmux
+first that the old `p` key was never actually reachable while typing in
+the prompt or console — both already ignore the nav `useInput` hook
+entirely while active — so this wasn't fixing a real input-collision
+bug, just a design preference.) Escape still resumes instantly, and `/`
+or `:` still work while paused specifically so `/pause` can be typed
+again to resume. `SPEC.md`'s Pause and Keys-and-commands sections,
+`/help`'s output, and `Prompt.tsx`'s hint text (reverted to its
+pre-pause wording, since pause is no longer a key worth advertising
+there) were all updated to match.
 
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,

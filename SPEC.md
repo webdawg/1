@@ -547,16 +547,21 @@ open):
   above).
 - Enter — travel to the focused entry (or, on the star-map exit entry,
   travel back out through the current star).
-- Escape / Backspace — go back one level (`goBack()`).
+- Escape / Backspace — go back one level (`goBack()`); Escape also
+  instantly resumes if paused (see Pause below).
 - `+`/`=` and `-`/`_` — zoom in/out (see Zoom above); no effect on a
   leaf's `ContentView` screen.
-- `p` — toggle pause (see Pause below).
 - `~` — open the Console (see Console above).
-- `/` or `:` — enter command mode.
+- `/` or `:` — enter command mode (works even while paused, so `/pause`
+  can be typed again to resume).
 
 **Command mode** (`/` or `:` then Enter): `help`, `back`, `save <text>`,
-`notes`, `whoami`, `time`, `quit`/`exit`. Unknown commands log an error
-and return to nav mode.
+`notes`, `whoami`, `time`, `pause`, `quit`/`exit`. Unknown commands log
+an error and return to nav mode. Deliberately a command rather than a
+bare key — a bare key risks accidentally firing during ordinary nav-mode
+play (a stray keypress while looking around), where a slash command
+can't, and it matches every other non-movement action (`save`, `time`,
+`quit`, ...) already being a command rather than a hotkey.
 
 **Console** (`~`, its own separate mode — see Console above): `help`,
 `become llm`, `become human`, `close`/`exit`; Escape also closes it.
@@ -572,25 +577,33 @@ mode (`App.tsx`) and inside the Console (`Console.tsx`) — points back to
 
 ## Pause
 
-`p`, from nav mode, freezes the whole screen so the player can select
-and copy text out of the terminal without it changing mid-selection —
-without this, the always-ticking HUD clock (its own 1s interval) and
-the coarser 5s position/drift tick mean nothing on screen stays still
-for long. Implementation (`App.tsx`): a `paused` boolean gates both
-interval callbacks (`if (!pausedRef.current) setX(...)`, read via a ref
-kept in sync with the state so the already-running `setInterval`
-doesn't need to be torn down and recreated) — the timers keep firing,
-they just skip the state update that would otherwise trigger a
-re-render or advance anything. The same `useInput` handler that owns
-the other nav-mode keys checks `paused` first: while paused, every key
-except `p` and Escape is swallowed (arrows don't move focus, Enter
-doesn't travel, zoom doesn't change), so the frozen frame is genuinely
-frozen, not just visually stale. A side effect worth being deliberate
-about: since the drift-accumulation effect is keyed off the same tick
-that pause suppresses, gravitational time dilation does not accumulate
-while paused — the same "no relativistic effect" treatment a SOLAR BASE
-JUMP already gets (`SPEC.md`'s Time section), for the same underlying
-reason (nothing advances during a deliberate non-gameplay freeze).
-Shown via a `PAUSED — press p or esc to resume` message that takes over
-the HUD's `Centered on X` slot (the same slot a SOLAR BASE JUMP's phase
-message already borrows), bold and yellow like the transition message.
+`/pause` freezes the whole screen so the player can select and copy
+text out of the terminal without it changing mid-selection — without
+this, the always-ticking HUD clock (its own 1s interval) and the
+coarser 5s position/drift tick mean nothing on screen stays still for
+long. A command rather than a bare key deliberately — see the Keys and
+commands section above for why — which also means it can never fire
+while typing in the prompt or console (both already ignore the nav
+`useInput` hook entirely — see below — but a bare key would still risk
+an accidental trigger during ordinary nav-mode play).
+
+Implementation (`App.tsx`): a `paused` boolean gates both interval
+callbacks (`if (!pausedRef.current) setX(...)`, read via a ref kept in
+sync with the state so the already-running `setInterval` doesn't need
+to be torn down and recreated) — the timers keep firing, they just skip
+the state update that would otherwise trigger a re-render or advance
+anything. The `runCommand` `pause` case toggles the boolean and logs
+"Paused"/"Resumed". The same `useInput` handler that owns the other
+nav-mode keys checks `paused` first: while paused, every key except
+Escape (instant resume) and `/`/`:` (to type `/pause` again) is
+swallowed — arrows don't move focus, Enter doesn't travel, zoom doesn't
+change — so the frozen frame is genuinely frozen, not just visually
+stale. A side effect worth being deliberate about: since the
+drift-accumulation effect is keyed off the same tick that pause
+suppresses, gravitational time dilation does not accumulate while
+paused — the same "no relativistic effect" treatment a SOLAR BASE JUMP
+already gets (`SPEC.md`'s Time section), for the same underlying reason
+(nothing advances during a deliberate non-gameplay freeze). Shown via a
+`PAUSED — esc or /pause to resume` message that takes over the HUD's
+`Centered on X` slot (the same slot a SOLAR BASE JUMP's phase message
+already borrows), bold and yellow like the transition message.

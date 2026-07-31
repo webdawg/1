@@ -313,14 +313,17 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
   useInput(
     (input, key) => {
-      // Paused freezes the whole screen for copy/paste — while paused, only
-      // the unpause keys do anything, so the display genuinely stays still.
+      // Paused freezes the whole screen for copy/paste — entered via the
+      // /pause command, not a bare key, so it can never fire while typing
+      // in the prompt or console (those already don't receive this hook's
+      // events at all — see the isActive check below — but a raw key here
+      // would still mean a stray "p" during normal nav does something
+      // unexpected). While paused, only Escape (instant) or "/"/":" (to
+      // type /pause again) do anything, so the display genuinely stays
+      // still until the player deliberately asks to resume.
       if (paused) {
-        if (input === "p" || key.escape) setPaused(false);
-        return;
-      }
-      if (input === "p") {
-        setPaused(true);
+        if (key.escape) setPaused(false);
+        else if (input === "/" || input === ":") setMode("command");
         return;
       }
       if (key.leftArrow) {
@@ -413,9 +416,13 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         // and silently overflow the HUD's fixed height (see DEVELOPMENT.md's
         // Ink gotchas).
         pushLog("Keys: arrows move/select, enter travel, esc/backspace back, +/- zoom");
-        pushLog("p pause (freezes screen for copy/paste), ~ console, / or : commands");
-        pushLog("Commands: help, back, save <text>, notes, whoami, time, quit/exit");
+        pushLog("~ console, / or : commands (help, pause, back, save, notes...)");
+        pushLog("Commands: help, back, save <text>, notes, whoami, time, pause, quit/exit");
         pushLog("Console (~): help, become llm, become human, close/exit");
+        break;
+      case "pause":
+        setPaused((p) => !p);
+        pushLog(paused ? "Resumed." : "Paused — screen frozen for copy/paste. /pause again to resume.");
         break;
       case "back": {
         if (!goBack()) pushLog(`Already at ${centerLabel}.`);
@@ -522,7 +529,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
             {transition ? (
               PHASE_MESSAGES[transitionPhase](transition.label)
             ) : paused ? (
-              "PAUSED — press p or esc to resume"
+              "PAUSED — esc or /pause to resume"
             ) : (
               <>
                 Centered on <Text bold>{centerLabel}</Text>
