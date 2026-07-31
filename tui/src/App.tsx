@@ -30,7 +30,7 @@ import {
   parseLeafId,
 } from "./worldTree.js";
 import { isStarId, STARMAP_ID } from "./starFacts.js";
-import { saveSession, type PlayerType, type SessionData } from "./session.js";
+import { loadSession, saveSession, type PlayerType, type SessionData } from "./session.js";
 import {
   advanceDrift,
   dilationFactor,
@@ -420,9 +420,9 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         // and silently overflow the HUD's fixed height (see DEVELOPMENT.md's
         // Ink gotchas).
         pushLog("Keys: arrows move/select, enter travel, esc/backspace back, +/- zoom");
-        pushLog("~ console, / or : commands (help, pause, back, save, notes...)");
-        pushLog("Commands: help, back, save <text>, notes, whoami, time, pause, quit/exit");
-        pushLog("Console (~): help, become llm, become human, close/exit");
+        pushLog("~ console, / or : commands (help, save, load, whoami, pause...)");
+        pushLog("Commands: help, back, save <text>, notes, load <id> <key>");
+        pushLog("whoami, time, pause, quit/exit. Console (~): help, become llm/human");
         break;
       case "pause":
         setPaused((p) => !p);
@@ -450,8 +450,31 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         break;
       }
       case "whoami":
+        // All three lines together (not just the session id) so /pause + a
+        // real terminal copy is enough to save credentials at any point in
+        // play, not just the one-time line printed at session creation.
         pushLog(`Session: ${sessionRef.current.sessionId}`);
+        pushLog(`Resume key: ${sessionRef.current.resumeKey}`);
+        pushLog(`Resume with: npm start -- --resume ${sessionRef.current.sessionId} ${sessionRef.current.resumeKey}`);
         break;
+      case "load": {
+        const [loadId, loadKey] = rest;
+        if (!loadId || !loadKey) {
+          pushLog("Usage: load <sessionId> <resumeKey>");
+          break;
+        }
+        void loadSession(loadId, loadKey).then((loaded) => {
+          if (!loaded) {
+            pushLog("No matching session found for that session id / resume key.");
+            return;
+          }
+          sessionRef.current = loaded;
+          setPath(loaded.path);
+          setPlayerType(loaded.playerType);
+          pushLog(`Loaded session ${loaded.sessionId}.`);
+        });
+        break;
+      }
       case "time": {
         // Four short, single-line entries — as with /help, a longer combined
         // string here wraps and silently overflows the HUD's fixed log

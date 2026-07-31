@@ -594,12 +594,33 @@ open):
   can be typed again to resume).
 
 **Command mode** (`/` or `:` then Enter): `help`, `back`, `save <text>`,
-`notes`, `whoami`, `time`, `pause`, `quit`/`exit`. Unknown commands log
-an error and return to nav mode. Deliberately a command rather than a
-bare key — a bare key risks accidentally firing during ordinary nav-mode
-play (a stray keypress while looking around), where a slash command
-can't, and it matches every other non-movement action (`save`, `time`,
-`quit`, ...) already being a command rather than a hotkey.
+`notes`, `load <sessionId> <resumeKey>`, `whoami`, `time`, `pause`,
+`quit`/`exit`. Unknown commands log an error and return to nav mode.
+Deliberately a command rather than a bare key — a bare key risks
+accidentally firing during ordinary nav-mode play (a stray keypress
+while looking around), where a slash command can't, and it matches
+every other non-movement action (`save`, `time`, `quit`, ...) already
+being a command rather than a hotkey.
+
+`whoami` prints all three of session id, resume key, and a ready-to-run
+`npm start -- --resume <id> <key>` line — not just the id, which is all
+it originally showed. This is deliberately the *only* other place (besides
+the one-time line printed when a session is first created) the resume
+key is ever surfaced: pair it with `/pause` (see Pause above) to freeze
+the screen and copy real credentials out of the terminal at any point
+mid-session, not just at the very start.
+
+`load <sessionId> <resumeKey>` is the in-game counterpart to launching
+with `--resume`: calls `session.ts`'s `loadSession` (same function
+`index.tsx` uses at startup), and on success replaces `sessionRef.current`
+wholesale plus `setPath`/`setPlayerType` to match — no process restart.
+`focusedId`/`zoomLevel` need no explicit reset: they already derive from
+`path`/`centerId` via existing effects, which fire naturally once `path`
+changes. A bad id/key pair logs an error and leaves the current session
+untouched. The session being left behind isn't lost — it was already
+continuously persisted throughout play (every travel/note/tick already
+calls `saveSession`, not just `load`/`quit`), so it's independently
+resumable later by its own id/key.
 
 **Console** (`~`, its own separate mode — see Console above): `help`,
 `become llm`, `become human`, `close`/`exit`; Escape also closes it.

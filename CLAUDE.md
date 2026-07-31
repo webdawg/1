@@ -63,10 +63,11 @@ purpose shifts or a new one is added.
 
 - `src/index.tsx` — entry point, session bootstrap.
 - `src/App.tsx` — main loop: arrow-key navigation, `/`-command mode
-  (`help`, `back`, `save <text>`, `notes`, `whoami`, `time`, `pause`,
-  `quit`) — `pause` freezes the screen for copy/paste, see `SPEC.md`'s
-  Pause section — local session persistence via `session.ts`. Renders
-  the two official tiles —
+  (`help`, `back`, `save <text>`, `notes`, `load <id> <key>`, `whoami`,
+  `time`, `pause`, `quit`) — `pause` freezes the screen for copy/paste,
+  `load` swaps to a different saved session live without restarting the
+  process, both via `session.ts` — see `SPEC.md`'s Pause and Keys-and-
+  commands sections. Renders the two official tiles —
   each one a single bordered box with nothing outside its own frame
   (the `~` console is the sole exception, its own floating overlay):
   NAVIGATION (top), labeled top-right, with the focused-entry footer
@@ -371,6 +372,24 @@ user rather than silently picking a truncation, since further trimming
 would have gutted the millisecond ticking just added. User chose two
 rows over shortening the content. Verified via tmux at both 80 and wide
 columns, including watching it tick over several renders.
+
+Also added this session: made resuming a session actually usable.
+`whoami` used to print only the session id — now prints the resume key
+and a ready-to-run `npm start -- --resume <id> <key>` line too, since
+the key was previously shown exactly once (at session creation) and
+nowhere else, making it easy to lose; pairs naturally with `/pause` to
+freeze the screen and copy real credentials mid-session. Also added a
+`load <sessionId> <resumeKey>` command — the in-game counterpart to
+launching with `--resume`, calling the same `session.ts` `loadSession`
+`index.tsx` uses at startup, then swapping `sessionRef.current` plus
+`setPath`/`setPlayerType` live, no process restart; a bad id/key pair
+just logs an error and leaves the current session alone. Verified
+end-to-end via tmux: created a session, traveled to Mercury, grabbed its
+id/key via `whoami`, started a second fresh session, and `/load`ed the
+first one into it — HUD and NAVIGATION both switched live to the loaded
+state, breadcrumb and all, and normal navigation (Escape back to Sun)
+kept working afterward; also confirmed a bad id/key pair leaves the
+current session untouched.
 
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,
