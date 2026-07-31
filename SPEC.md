@@ -434,15 +434,28 @@ though the departure star's own dilation would otherwise contribute
 measurably over that many seconds.
 
 **Display**: `App.tsx`'s bottom panel shows all three times *continuously*
-on their own dedicated row (not just via `time`) — actual time
-(`HH:MM:SS` plus a UTC offset like `UTC-7`/`UTC+5:30`,
-`relativity.ts`'s `formatUtcOffset`), a detailed universe age
-(`formatUniverseAgeCompactDetailed`, e.g.
-`13.797B yrs.211d 16:19:20.953` — the billions-of-years figure from
-`formatUniverseAgeCompact`, plus a `.` and a day/H:M:S.mmm remainder
-that visibly ticks), and the current drift (`formatDriftMs`, read
-directly off `sessionRef.current.timeDriftMs`). Visible on every
-screen, including leaf views and mid-jump.
+(not just via `time`), across two dedicated rows, each a labeled
+bracketed group:
+
+- `[GALACTIC TIMES - ...]` — actual time (`HH:MM:SS` plus a UTC offset
+  like `UTC-7`/`UTC+5:30`, `relativity.ts`'s `formatUtcOffset`) and a
+  detailed universe age (`formatUniverseAgeCompactDetailed`, e.g.
+  `13.797B yrs.211d 16:19:20.953` — the billions-of-years figure from
+  `formatUniverseAgeCompact`, plus a `.` and a day/H:M:S.mmm remainder
+  that visibly ticks), e.g. `[GALACTIC TIMES - 1:07:35 PM UTC-4 · 13.797B
+  yrs.211d 17:07:35.923]`.
+- `[ACCUMULATED DILATION - ...]` — the current drift (`formatDriftMs`, read directly
+  off `sessionRef.current.timeDriftMs`), e.g. `[ACCUMULATED DILATION - -197.334ns]`.
+
+Two rows, not one: the combined single-line form (`[GALACTIC TIMES -
+...] [ACCUMULATED DILATION - ...]`) runs to ~91 characters at typical values, well
+past the ~76-character content-width budget at 80 columns — the exact
+overflow-corruption class this session kept hitting elsewhere
+(`DEVELOPMENT.md`'s Ink gotchas). Splitting into two rows was the
+user's explicit choice over shortening either bracket's contents (which
+would have meant losing precision from the just-added millisecond
+detail). Both rows are visible on every screen, including leaf views
+and mid-jump.
 
 Both new pieces are HUD-only — the `time` command's own Time 1/Time 2
 output is untouched (no timezone, no millisecond detail; still

@@ -360,6 +360,18 @@ found by testing at that label rather than assuming a short one).
 Verified via the session-file-resume technique to reach that label
 directly, at both 80 and wide columns.
 
+Also relabeled this session, per the user's own naming: the HUD's Time
+row split into two labeled bracketed rows, `[GALACTIC TIMES - ...]`
+(actual time + universe age) and `[ACCUMULATED DILATION - ...]` (drift). Tried
+fitting both on one row first (the user's initial ask), but the
+combined `[LABEL - value]` form runs ~91 characters against the
+~76-character budget at 80 columns even after aggressively trimming
+the drift/universe-age precision — laid the arithmetic out for the
+user rather than silently picking a truncation, since further trimming
+would have gutted the millisecond ticking just added. User chose two
+rows over shortening the content. Verified via tmux at both 80 and wide
+columns, including watching it tick over several renders.
+
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,
 tests).

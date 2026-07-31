@@ -95,7 +95,8 @@ const BOTTOM_PANEL_HEIGHT =
   2 /* border */ +
   1 /* breadcrumb: "Centered on X" */ +
   1 /* breadcrumb: path list, truncated to width */ +
-  1 /* time */ +
+  1 /* [GALACTIC TIMES - ...] */ +
+  1 /* [ACCUMULATED DILATION - ...] */ +
   1 /* gravity */ +
   1 /* galactic gravity constant formula */ +
   1 /* velocity */ +
@@ -552,9 +553,10 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
             : " "}
         </Text>
         <Text dimColor>
-          Time: {clockNow.toLocaleTimeString()} {formatUtcOffset(clockNow)} · {formatUniverseAgeCompactDetailed(clockNow)} ·{" "}
-          {formatDriftMs(sessionRef.current.timeDriftMs)}
+          [GALACTIC TIMES - {clockNow.toLocaleTimeString()} {formatUtcOffset(clockNow)} ·{" "}
+          {formatUniverseAgeCompactDetailed(clockNow)}]
         </Text>
+        <Text dimColor>[ACCUMULATED DILATION - {formatDriftMs(sessionRef.current.timeDriftMs)}]</Text>
         <Text dimColor>
           Gravity (m/s²): local {formatGravity(localGravityMps2)}, star {formatGravity(starGravityMps2)}, galactic{" "}
           {formatGravity(GALACTIC_GRAVITY_MPS2)}
