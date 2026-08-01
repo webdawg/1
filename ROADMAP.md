@@ -40,6 +40,8 @@ More to explore before this feels like "the solar system," plus the
 BBS-style social layer the vision calls for.
 
 - [x] Comets (Halley, Encke, Hale-Bopp, Hyakutake — full Kepler positions)
+- [x] A curated black hole (Sagittarius A*, real mass/distance, the most
+      extreme real gravitational time dilation source in the game)
 - [ ] Dwarf planets (Pluto, Ceres, Eris, ...)
 - [ ] Bots / NPCs at locations ("there may be bots there")
 - [ ] Leave-messages-for-others feature (BBS-style)

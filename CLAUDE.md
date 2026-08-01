@@ -84,8 +84,11 @@ purpose shifts or a new one is added.
   `beltFacts.ts`, `cometFacts.ts`, `starFacts.ts` — factual data per body
   category, each exposing an id union type + a `Record<Id, Facts>` + an
   `isXId` guard, following the same shape. `starFacts.ts` is a curated
-  static snapshot (~16 real stars, ~27 real exoplanets) — same pattern as
-  the rest, no network calls. `planetFacts.ts` and `starFacts.ts` both
+  static snapshot (~16 real stars, ~27 real exoplanets, plus Sagittarius
+  A* — the Milky Way's real central black hole, curated as one more
+  `StarId`/`STAR_FACTS` entry rather than a new category, same precedent
+  PSR B1257+12 already set) — same pattern as the rest, no network calls.
+  `planetFacts.ts` and `starFacts.ts` both
   carry real `gravity`/`diameterKm` — used for display, and now also for
   `relativity.ts`'s real gravitational time dilation.
 - `src/components/SolarView.tsx` — renders the orbit-grid ASCII view: a
@@ -413,6 +416,40 @@ called them); the HUD's `clockNow` interval also reverted from 100ms
 back to 1s, since nothing sub-second is displayed anymore. Verified via
 tmux at both 80 and wide columns, shown to the user as a mockup before
 committing per their request.
+
+Also added this session, from a captured vision addendum (`SCOPE.md`'s
+2026-07-31 entry): Sagittarius A*, the Milky Way's real central
+supermassive black hole, as one more curated `starFacts.ts` entry ("just
+a black blob," per the request) — following the exact precedent
+PSR B1257+12 already set (a non-star curated as a `StarId` anyway), so
+every mechanic keyed off `isStarId` worked with zero changes to
+`worldTree.ts`: glyph, leaves, the SOLAR BASE JUMP star-dive transition,
+`getDilationInputs`. Its `gravity`/`diameterKm` are derived from its
+real Schwarzschild radius (EHT-2022 mass ~4.297M M☉, `Rs ≈ 12.69M km`)
+via the same `GM = gravity·radius²` construction used everywhere else —
+"standing" on it means standing at the event horizon, where
+`2GM/(rc²) = 1` by definition, so `dilationFactor` hits its cap and
+returns a factor of ~0.001 — an order of magnitude more extreme than
+the previous most-extreme case (the pulsar's ~0.79), matching the
+addendum's "a few years there, decades back home" framing; confirmed
+live via tmux that a single 5s tick there accumulated ~5s of drift.
+Two real bugs found and fixed along the way, both against this
+session's own established gotchas: (1) tried widening
+`STARMAP_DISPLAY_DOMAIN`'s max to fit its real 26,673 ly distance,
+which forced auto-zoom to 64x and crowded all 16 existing stars into
+unreadable overlap — reverted; it instead clamps to the same outer rim
+any out-of-domain distance already does, same as PSR B1257+12's own
+distance already maxes the domain at. (2) the first description (538
+chars, nearly 3x the longest existing star's 177) overflowed the leaf
+card's fixed height at 80 columns and corrupted its border — shortened
+to 149 chars, in line with the rest of `starFacts.ts`. Also iterated on
+`displayAngleDeg` twice after visually confirming collisions via tmux
+(a request mid-session, "put the black blob way off in the distance,"
+landed it at 270°, the star map's single largest open angular gap) —
+genuinely isolated at a typical terminal height (confirmed at 100×45),
+though an 80×30 floor still crowds it against whatever else is near
+that rim position, the same accepted trade-off every crowded cluster in
+this view already has.
 
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,

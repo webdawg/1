@@ -108,7 +108,16 @@ const LEAF_DOMAIN: DistanceDomain = { min: 1, max: 3 };
 // Comets range from well under 1 AU to hundreds of AU; anything past this
 // simply pins to the outer edge of the display (scaleDistance clamps).
 const COMET_DISPLAY_DOMAIN: DistanceDomain = { min: 0.2, max: 40 };
-// Sol sits at distance 0; PSR B1257+12 is the most distant curated star.
+// Sol sits at distance 0; PSR B1257+12 (2300 ly) sets the domain's max.
+// Sagittarius A* is real curated distance is 26,673 ly — deliberately NOT
+// widening this domain to fit it: doing so was tried and reverted, since
+// squeezing in one outlier 11x farther than the next-farthest curated star
+// forced sqrt scaling (and auto-zoom right along with it, maxing out at
+// 64x) to crowd all 16 existing stars into unreadable overlap. Sgr A*
+// instead just clamps to the same outer rim every other out-of-domain
+// distance already does (scaleDistance's t is clamped to [0,1] — see
+// layout.ts) — landing it right next to PSR B1257+12 at the rim, which
+// reads fine: the two most extreme curated objects, together at the edge.
 const STARMAP_DISPLAY_DOMAIN: DistanceDomain = { min: 0, max: 2300 };
 
 const LEAF_LABELS: Record<LeafKind, string> = {

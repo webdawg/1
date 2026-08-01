@@ -10,11 +10,11 @@ file ever disagree, the code is authoritative until this file catches up.
 
 A single recursive rule: whatever node you're centered on, you see what
 orbits it. The root is the star map (`starmap`) → stars (Sol, id `"sun"`,
-plus ~16 real nearby stars) → for Sol: `planet` → `moon`; `sun` → `belt` →
-`asteroid`; `sun` → `comets` (hub) → `comet`; for every other star:
-`exoplanet`. Any of those → leaf nodes (`surface`, `orbit-log`, `rings` —
-only on ringed planets, `notes`). Leaves are generic detail screens, not
-physical bodies.
+plus ~16 real nearby stars, plus Sagittarius A* — see below) → for Sol:
+`planet` → `moon`; `sun` → `belt` → `asteroid`; `sun` → `comets` (hub) →
+`comet`; for every other star: `exoplanet`. Any of those → leaf nodes
+(`surface`, `orbit-log`, `rings` — only on ringed planets, `notes`).
+Leaves are generic detail screens, not physical bodies.
 
 Position math, by category:
 - **Planets** — real orbital elements + Kepler's equation (Newton's
@@ -38,6 +38,38 @@ Position math, by category:
   human timescales. `tui/src/starFacts.ts` is the curated data source (a
   static snapshot, not a live feed — same pattern as every other
   `*Facts.ts` file in this codebase).
+
+**Sagittarius A***, the Milky Way's real central supermassive black
+hole, is curated as one more `StarId`/`STAR_FACTS` entry (id
+`sagittarius-a-star`) — not a new category, following the same precedent
+`STAR_FACTS` already set for PSR B1257+12 (a pulsar, not a true star,
+handled the same way). Every mechanic keyed off `isStarId` — glyph,
+labels, leaves, the "diving through a star" SOLAR BASE JUMP transition,
+`getDilationInputs` — works for it with zero changes elsewhere, since
+`worldTree.ts` only ever branches on `isStarId(id) && id !== "sun"`, not
+on which specific star. Its `gravity`/`diameterKm` aren't a literal
+surface (a black hole has none) — they're derived from its Schwarzschild
+radius (`Rs = 2GM/c²`, real EHT-2022 mass ~4.297 million M☉, giving
+`Rs ≈ 12.69 million km`) via the same `GM = gravity·radius²`
+construction `dilationFactor` uses everywhere else, so "standing" on it
+means standing at the event horizon — the real physics reads exactly as
+dramatic as the concept demands (see Time below). Real distance
+(26,673 ly) intentionally matches `relativity.ts`'s
+`GALACTIC_CENTER_DISTANCE_LY`, since Sgr A* *is* the object that
+constant already measures the Sun's distance from — but it's **not**
+folded into `STARMAP_DISPLAY_DOMAIN`'s max (still 2300 ly, PSR
+B1257+12's real distance): widening the shared domain to fit one object
+11x farther than the next-farthest curated star was tried and reverted,
+since it forced auto-zoom to max out (64x) crowding all 16 other stars
+into unreadable overlap. Sgr A* instead just clamps to the same outer
+rim any out-of-domain distance already does — landing it, at
+`displayAngleDeg: 270`, in the star map's single largest open angular
+gap, genuinely isolated from the named-star cluster at typical terminal
+heights (confirmed via tmux at 100×45; a short 80×30 terminal still
+crowds it against whatever else happens to be near that rim position at
+that size, same accepted trade-off every crowded cluster in this view
+already has — icons are guaranteed a slot, only labels are ever
+dropped).
 
 ## Layout
 
@@ -158,6 +190,7 @@ bracket-style signaling category before you even read the letter inside:
 | Individual comet | `~'~` | `~'~` |
 | Star map (center marker only — it's the root, nothing further out to select) | `{*}` | `{*}` |
 | Star (other than Sol) | `*x*` | one distinct letter/digit per star, e.g. `*7*` TRAPPIST-1, `*1*` 51 Pegasi — see `starFacts.ts`. Same dual role as the Sun: orbit entry in the star map, or selectable center-of-view entry when centered on it |
+| Sagittarius A* (deliberately off-motif) | `(●)` | `(●)` — a filled circle, not a star's `*x*` bracket, so the one non-star entry in the star map reads as visually distinct at a glance ("just a black blob," per the request that added it) |
 | Exoplanet | `(x)` rocky / `=x=` gas giant | `(e)` / `=g=` |
 | Leaf (Surface/Orbit Log/Rings/Notes) | `»` | shared `»` — menu-styled, not body-styled; the label disambiguates which leaf |
 
@@ -400,7 +433,16 @@ The proper formula matters because it stays correct even in the strong-field
 regime — the curated pulsar PSR B1257+12 is a real neutron star
 (~1.4 solar masses, ~11km radius) where `2GM/(rc²) ≈ 0.38`, giving a
 factor of ~0.79 (a clock there runs at ~79% speed). The weak-field linear
-approximation would quietly break down at that scale.
+approximation would quietly break down at that scale. Sagittarius A*
+(see World model above) is the genuinely extreme case: at its
+Schwarzschild radius, `2GM/(rc²) = 1` by definition (that's the
+Schwarzschild radius's actual definition), so `dilationFactor` hits
+`MAX_SCHWARZSCHILD_TERM`'s cap and returns a factor of ~0.001 — a clock
+there runs at roughly 1/1000th speed, an order of magnitude more
+extreme than the pulsar. Verified live via tmux: dwelling there for a
+single 5s tick accumulated ~5 real seconds of drift (`factor - 1 ≈
+-0.999`, so almost the entire elapsed tick is lost) — matching the "a
+few years there, decades back home" framing the object was added for.
 
 A node's total dilation factor (`dilationFactor`) multiplies two
 independent terms: a **local** term (the node's own surface gravity, if

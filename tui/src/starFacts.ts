@@ -30,7 +30,8 @@ export type StarId =
   | "kepler-186"
   | "kepler-452"
   | "wasp-12"
-  | "psr-b1257+12";
+  | "psr-b1257+12"
+  | "sagittarius-a-star";
 
 // Sol ("sun") is handled specially in worldTree.ts — it keeps its existing
 // glyph/label/children untouched. This order excludes it.
@@ -51,6 +52,7 @@ export const STAR_ORDER: readonly Exclude<StarId, "sun">[] = [
   "kepler-452",
   "wasp-12",
   "psr-b1257+12",
+  "sagittarius-a-star",
 ];
 
 export interface StarFacts {
@@ -234,6 +236,35 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     // weak-field approximation everywhere else. See relativity.ts.
     gravity: 1.5e12,
     diameterKm: 22,
+  },
+  "sagittarius-a-star": {
+    label: "Sagittarius A*",
+    description:
+      "Not a star but the supermassive black hole at the Milky Way's center — ~4.3 million solar masses, the galaxy's strongest real time dilation source.",
+    // Same real distance as relativity.ts's GALACTIC_CENTER_DISTANCE_LY —
+    // that constant measures the Sun's distance from exactly this object,
+    // since Sgr A* IS the galactic center (GRAVITY collaboration, 2019).
+    distanceLy: 26_673,
+    spectralType: "Supermassive black hole",
+    glyph: "(●)",
+    // Clamped to the same outer rim radius as PSR B1257+12 (see
+    // STARMAP_DISPLAY_DOMAIN's comment) — 270° puts it at the bottom of
+    // the map, the single largest open gap in the angle list (hd-209458
+    // at 255° to toi-700 at 280°), furthest in practice from where the
+    // named-star cluster actually renders at typical zoom levels.
+    displayAngleDeg: 270,
+    // EHT Collaboration 2022 mass estimate (~4.297 million solar masses).
+    // gravity/diameterKm here aren't a literal surface — they're derived
+    // from the Schwarzschild radius (Rs = 2GM/c² ≈ 12.69 million km) via
+    // the same GM = gravity·radius² construction dilationFactor uses
+    // everywhere else, so "standing" here means standing at the event
+    // horizon. 2GM/(rc²) = 1 there by definition, capped by
+    // relativity.ts's MAX_SCHWARZSCHILD_TERM to a dilation factor of
+    // ~0.001 — a clock at the horizon runs at roughly 1/1000th speed,
+    // the most extreme curated case by a wide margin (PSR B1257+12's
+    // ~0.79 was the previous most extreme).
+    gravity: 3.54e6,
+    diameterKm: 25_390_000,
   },
 };
 

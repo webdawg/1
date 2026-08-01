@@ -139,7 +139,10 @@ export function toClockHour(angleDeg: number): number {
 export const MIN_TRAVEL_MS = 5000;
 export const MAX_TRAVEL_MS = 10000;
 // Matches worldTree.ts's STARMAP_DISPLAY_DOMAIN max — the farthest curated
-// star (PSR B1257+12) is the longest a SOLAR BASE JUMP can take.
+// star (PSR B1257+12) is the longest a SOLAR BASE JUMP can take. Sagittarius
+// A*'s real distance (26,673 ly) is well past this on purpose — see
+// STARMAP_DISPLAY_DOMAIN's comment — so it clamps to the same max travel
+// time PSR B1257+12 gets, same as any other out-of-domain distance would.
 const MAX_KNOWN_DISTANCE_LY = 2300;
 
 /**

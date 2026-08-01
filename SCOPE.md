@@ -198,3 +198,32 @@ current position in the galaxy — we just need to know distance for now.
 **Verbatim:**
 
 we need to add current gravity to the hud - solar system, and planet gravity - there should also be a gravitional constant that is calculated from the distance from the center of the galaxy to the current position in the galaxy - we just need to know distance for now
+
+### 2026-07-31 — A black hole for the galaxy
+
+**Edited for readability:**
+
+I want to add a black hole to the galaxy — it can just be a black blob.
+Let's do this one:
+
+The biggest black hole in the Milky Way is Sagittarius A* — the
+supermassive black hole at the very center of our galaxy. It has a
+mass around four million times that of our Sun, and it's roughly
+26,000 light-years from Earth. (Source: CNN.)
+
+Since gravitational time dilation scales with mass (and how close you
+get to the event horizon), Sagittarius A* is the strongest "time warp"
+source anywhere in the galaxy. If you got close to its event horizon —
+without being torn apart by tidal forces first, which is a real
+problem — your clock would tick dramatically slower than one back on
+Earth. In principle, someone could hover near the edge, experience what
+feels like a few years, and return to find decades or centuries had
+passed back home. This is essentially the Interstellar scenario, just
+scaled up to Sagittarius A*'s size.
+
+**Verbatim:**
+
+i want to add a black hole to the galaxy - it can just be a black blob - lets do this one:The biggest black hole in the Milky Way is Sagittarius A* — the supermassive black hole at the very center of our galaxy. It has a mass around four million times that of our Sun, and it's roughly 26,000 light-years from Earth. 
+CNN
+
+Since gravitational time dilation scales with mass (and how close you get to the event horizon), Sagittarius A* is the strongest "time warp" source anywhere in the galaxy. If you got close to its event horizon — without being torn apart by tidal forces first, which is a real problem — your clock would tick dramatically slower than one back on Earth. In principle, someone could hover near the edge, experience what feels like a few years, and return to find decades or centuries had passed back home. This is essentially the Interstellar scenario, just scaled up to Sagittarius A*'s size.
