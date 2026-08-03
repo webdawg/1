@@ -255,11 +255,15 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     // terminal column each, same as any ASCII glyph.
     glyph: "▓█▓",
     // Clamped to the same outer rim radius as PSR B1257+12 (see
-    // STARMAP_DISPLAY_DOMAIN's comment) — 270° puts it at the bottom of
-    // the map, the single largest open gap in the angle list (hd-209458
-    // at 255° to toi-700 at 280°), furthest in practice from where the
-    // named-star cluster actually renders at typical zoom levels.
-    displayAngleDeg: 270,
+    // STARMAP_DISPLAY_DOMAIN's comment) — 180° puts it on the left side
+    // of the NAVIGATION tile, per direct follow-up request (it had
+    // briefly sat at the star map's exact center, then at 270°/bottom;
+    // this superseded both). Still the map's farthest-out object, same
+    // as it's always been; verify via tmux if this angle is ever revised
+    // again, since the grid's coarse resolution has repeatedly made
+    // "looks isolated" something that has to be checked, not assumed
+    // from the angle number alone.
+    displayAngleDeg: 180,
     // EHT Collaboration 2022 mass estimate (~4.297 million solar masses).
     // gravity/diameterKm here aren't a literal surface — they're derived
     // from the Schwarzschild radius (Rs = 2GM/c² ≈ 12.69 million km) via

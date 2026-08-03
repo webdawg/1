@@ -484,6 +484,33 @@ feedback that a plain circle "wasn't cutting it" — verified via tmux
 that Unicode block-drawing characters render single-width, same as
 every other glyph in this codebase, so no new column-math risk.
 
+Also iterated on Sagittarius A*'s star-map position twice more this
+session, both times on direct follow-up request. First, moved it to the
+star map's exact center (`worldTree.ts`'s `getOrbitChildren` overriding
+its display distance to `0` — the same "distance 0 takes over the fixed
+center marker" convention `starSelfEntry` already uses for a star
+you're standing on — with the Sun pushed out to its own real,
+precisely known distance from the galactic center,
+`GALACTIC_CENTER_DISTANCE_LY` = 26,673 ly, clamped to the same domain
+rim PSR B1257+12 already gets). Verified via tmux (including the
+session-file-resume technique to reach both directly) that this worked
+exactly as designed — `0.00 ly` for Sgr A*, `26673.00 ly` for the Sun.
+Then reverted on a second follow-up ("should be on the left or right...
+and farthest away from the cluster") — a literal left/right position is
+incompatible with distance 0 (angle is meaningless at zero radius), so
+this genuinely couldn't be layered on top of the center-placement; the
+Sun moved back to its original near-center spot, and Sgr A* went back
+to being a spread orbit entry, now at `displayAngleDeg: 180` (left side
+of the NAVIGATION tile) rather than its original 270° (bottom).
+Confirmed via tmux at 100×45 that 180° doesn't collide with TRAPPIST-1
+despite sharing the same angle — different radius keeps them apart on
+screen. The other 16 curated stars were never touched by either
+round-trip; their distances are still each star's real distance *from
+the Sun* (the only real number available for them — real
+distance-from-Sgr-A* isn't curated and would cluster them all within a
+narrow band anyway, flagged to the user during the center-placement
+round).
+
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,
 tests).

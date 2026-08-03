@@ -53,23 +53,33 @@ radius (`Rs = 2GM/c²`, real EHT-2022 mass ~4.297 million M☉, giving
 `Rs ≈ 12.69 million km`) via the same `GM = gravity·radius²`
 construction `dilationFactor` uses everywhere else, so "standing" on it
 means standing at the event horizon — the real physics reads exactly as
-dramatic as the concept demands (see Time below). Real distance
-(26,673 ly) intentionally matches `relativity.ts`'s
+dramatic as the concept demands (see Time below).
+
+Real distance (26,673 ly) intentionally matches `relativity.ts`'s
 `GALACTIC_CENTER_DISTANCE_LY`, since Sgr A* *is* the object that
 constant already measures the Sun's distance from — but it's **not**
 folded into `STARMAP_DISPLAY_DOMAIN`'s max (still 2300 ly, PSR
 B1257+12's real distance): widening the shared domain to fit one object
 11x farther than the next-farthest curated star was tried and reverted,
-since it forced auto-zoom to max out (64x) crowding all 16 other stars
-into unreadable overlap. Sgr A* instead just clamps to the same outer
-rim any out-of-domain distance already does — landing it, at
-`displayAngleDeg: 270`, in the star map's single largest open angular
-gap, genuinely isolated from the named-star cluster at typical terminal
-heights (confirmed via tmux at 100×45; a short 80×30 terminal still
-crowds it against whatever else happens to be near that rim position at
-that size, same accepted trade-off every crowded cluster in this view
-already has — icons are guaranteed a slot, only labels are ever
-dropped).
+since it forced auto-zoom to max out (64x) and crowded all 16 other
+stars into unreadable overlap. Sgr A* instead just clamps to the same
+outer rim any out-of-domain distance already does. `displayAngleDeg`
+went through three revisions before landing: initially 5° (collided
+with the tightest gap in the whole map, between PSR B1257+12 and
+Proxima Centauri), then briefly moved to be the star map's exact
+*center* (`distance` overridden to `0` — the same convention
+`starSelfEntry` uses for a star you're standing on — with the Sun
+pushed out to its own real rim distance instead), then reverted again
+on direct follow-up request to sit at **180°, the left side of the
+NAVIGATION tile**, clamped to the rim same as before, still the map's
+single farthest-out object. The center-placement round-trip is kept
+here as a record, not just erased, since the same "grid resolution is
+coarse enough that 'looks isolated' has to be checked live, not assumed
+from the angle number" lesson applied at every step — confirmed via
+tmux at both 100×45 (clean, own row, no collision with TRAPPIST-1
+despite sharing 180° — different radius keeps them apart) and 80×30
+(readable, some icon crowding at that floor, the same accepted
+trade-off every crowded cluster in this view already has).
 
 ## Layout
 
