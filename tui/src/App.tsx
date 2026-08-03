@@ -35,16 +35,20 @@ import {
   advanceDrift,
   dilationFactor,
   formatDriftMs,
+  formatGalacticPhase,
   formatGravity,
   formatGravityFormula,
   formatUniverseAge,
   formatUniverseAgeSeconds,
   formatUtcOffset,
   formatVelocity,
+  galacticOrbitPhaseDeg,
+  GALACTIC_CENTER_DISTANCE_LY,
   GALACTIC_GRAVITY_MPS2,
   GALACTIC_ORBITAL_SPEED_MPS,
   gravityAtDistance,
   orbitalVelocityAtDistance,
+  SUN_HEIGHT_ABOVE_GALACTIC_PLANE_LY,
   universeAgeSeconds,
 } from "./relativity.js";
 
@@ -97,6 +101,8 @@ const BOTTOM_PANEL_HEIGHT =
   1 /* breadcrumb: path list, truncated to width */ +
   1 /* [GALACTIC TIMES - ...] */ +
   1 /* [ACCUMULATED DILATION - ...] */ +
+  1 /* [GALACTIC POSITION - ...] */ +
+  1 /* [ORBITAL PHASE (illustrative) - ...] */ +
   1 /* gravity */ +
   1 /* galactic gravity constant formula */ +
   1 /* velocity */ +
@@ -578,6 +584,11 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
           {formatUniverseAgeSeconds(clockNow)}]
         </Text>
         <Text dimColor>[ACCUMULATED DILATION - {formatDriftMs(sessionRef.current.timeDriftMs)}]</Text>
+        <Text dimColor>
+          [GALACTIC POSITION - {GALACTIC_CENTER_DISTANCE_LY.toLocaleString("en-US")} ly out,{" "}
+          {SUN_HEIGHT_ABOVE_GALACTIC_PLANE_LY.toFixed(1)} ly above the plane]
+        </Text>
+        <Text dimColor>[ORBITAL PHASE (illustrative) - {formatGalacticPhase(galacticOrbitPhaseDeg(clockNow))}]</Text>
         <Text dimColor>
           Gravity (m/s²): local {formatGravity(localGravityMps2)}, star {formatGravity(starGravityMps2)}, galactic{" "}
           {formatGravity(GALACTIC_GRAVITY_MPS2)}

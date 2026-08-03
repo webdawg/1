@@ -103,13 +103,16 @@ corner:
   in favor of `Console`'s own overlay (see above).
 - **HUD (bottom tile) — everything else.** Fixed height (`App.tsx`'s
   `BOTTOM_PANEL_HEIGHT`, grown as more rows were added — see Time,
-  Gravity, and Velocity below), full width, one bordered box containing,
-  in order: the breadcrumb, split across two rows — `Centered on X` plus
-  the zoom indicator on the first, and the path list (`(Sun > ... > X)`)
-  on its own dedicated row below; the Time row, the Gravity row, the
-  Galactic Gravity Constant row, the Velocity row, the log (always
-  exactly `MAX_LOG_LINES` rows, padded with a single space rather than
-  an empty string so padding rows don't collapse to zero height — see
+  Gravity, Velocity, and Galactic position below), full width, one
+  bordered box containing, in order: the breadcrumb, split across two
+  rows — `Centered on X` plus the zoom indicator on the first, and the
+  path list (`(Sun > ... > X)`) on its own dedicated row below; the two
+  Time rows (`[GALACTIC TIMES - ...]`, `[ACCUMULATED DILATION - ...]`),
+  the Gravity row, the Galactic Gravity Constant row, the Velocity row,
+  the two Galactic position rows (`[GALACTIC POSITION - ...]`,
+  `[ORBITAL PHASE (illustrative) - ...]`), the log (always exactly
+  `MAX_LOG_LINES` rows, padded with a single space rather than an empty
+  string so padding rows don't collapse to zero height — see
   `DEVELOPMENT.md`), the command prompt, and finally the `HUD` label
   (right-aligned, the tile's actual last row so it lands in the literal
   bottom-right corner rather than floating above the prompt). Unlike
@@ -190,7 +193,7 @@ bracket-style signaling category before you even read the letter inside:
 | Individual comet | `~'~` | `~'~` |
 | Star map (center marker only — it's the root, nothing further out to select) | `{*}` | `{*}` |
 | Star (other than Sol) | `*x*` | one distinct letter/digit per star, e.g. `*7*` TRAPPIST-1, `*1*` 51 Pegasi — see `starFacts.ts`. Same dual role as the Sun: orbit entry in the star map, or selectable center-of-view entry when centered on it |
-| Sagittarius A* (deliberately off-motif) | `(●)` | `(●)` — a filled circle, not a star's `*x*` bracket, so the one non-star entry in the star map reads as visually distinct at a glance ("just a black blob," per the request that added it) |
+| Sagittarius A* (deliberately off-motif) | `▓█▓` | `▓█▓` — a dense block cluster, not a star's `*x*` bracket, so the one non-star entry in the star map reads as visually distinct at a glance. Started as a plain `(●)` circle; replaced on direct feedback that it "wasn't cutting it." Unicode block-drawing characters (U+2580 range) render as one terminal column each, same as any ASCII glyph — confirmed via tmux, since this codebase's glyph column-math is otherwise strict about single-width characters only (see `DEVELOPMENT.md`) |
 | Exoplanet | `(x)` rocky / `=x=` gas giant | `(e)` / `=g=` |
 | Leaf (Surface/Orbit Log/Rings/Notes) | `»` | shared `»` — menu-styled, not body-styled; the label disambiguates which leaf |
 
@@ -602,6 +605,46 @@ Time section) — a reminder that this is the classical `v = √(GM/d)`
 approximation everywhere (the same simplification the engine already
 uses for moon/asteroid/exoplanet positions), not a relativistically
 corrected velocity.
+
+## Galactic position
+
+Two more dedicated rows, directly below Velocity, answering "where are
+we relative to the black hole at the center of the galaxy" —
+Sagittarius A* (see World model above) is the origin.
+
+`[GALACTIC POSITION - ...]` — **real** data, always visible: distance
+from the galactic center (`GALACTIC_CENTER_DISTANCE_LY`, 26,673 ly,
+already curated for the Gravity/Velocity rows' galactic terms) and
+height above the galactic midplane (`relativity.ts`'s
+`SUN_HEIGHT_ABOVE_GALACTIC_PLANE_LY`, ~67.8 ly — the Sun's real
+measured offset, Bennett & Bovy 2019: 20.8 ± 0.3 pc). This height is
+shared by the Sun and every curated star in `starFacts.ts`, not
+computed per star: every one of them sits within ~2300 ly of the Sun,
+negligible against the ~26,673 ly to the galactic center, so the whole
+curated cluster is honestly at the *same* height on this scale — one
+real number, not sixteen approximated ones. Sagittarius A* itself sits
+*at* the plane (height 0), being the disk's own center by definition.
+
+`[ORBITAL PHASE (illustrative) - ...]` — explicitly **not** real data,
+labeled as such in the HUD text itself, not just in this doc. Real
+astronomy has no agreed reference epoch (and no precise-enough period)
+to say exactly where the Sun currently sits in its lap around the
+galactic center — unlike a planet's orbit, this isn't something with a
+tracked ephemeris. `relativity.ts`'s `galacticOrbitPhaseDeg` instead
+advances a phase angle in real time at the real orbital rate
+(`GALACTIC_ORBIT_PERIOD_SECONDS`, derived — not separately sourced —
+from the same circumference/speed the Gravity row's galactic term
+already uses; comes out to ~228 million years, a good sanity check
+against the real textbook range of ~225–250 million years), anchored
+arbitrarily to `REFERENCE_EPOCH_MS` (0° there) — a convention, the same
+way `starFacts.ts`'s `displayAngleDeg` values are hand-assigned rather
+than measured. `formatGalacticPhase` auto-scales like `formatGravity`;
+in practice this is *always* exponential notation (the real rate is
+~5×10⁻¹⁴° per second), and deliberately isn't hunted for a way to make
+it visibly tick the way GALACTIC TIMES' universe-age reading was —
+unlike that case, the real thing this represents genuinely doesn't
+change on any human timescale, so a static-looking number here is
+correct, not a bug to engineer around.
 
 ## Session model
 

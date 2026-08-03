@@ -246,7 +246,14 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
     // since Sgr A* IS the galactic center (GRAVITY collaboration, 2019).
     distanceLy: 26_673,
     spectralType: "Supermassive black hole",
-    glyph: "(●)",
+    // Deliberately not the (*) / *x* motifs every other star-map entry
+    // uses — a dense, dark block cluster rather than a bracketed dot, per
+    // direct feedback that a plain circle "wasn't cutting it." Verified
+    // via tmux that Unicode block-drawing characters (U+2580 range) don't
+    // trip the single-width column-math gotcha every other glyph in this
+    // codebase has to respect (see DEVELOPMENT.md) — they render as one
+    // terminal column each, same as any ASCII glyph.
+    glyph: "▓█▓",
     // Clamped to the same outer rim radius as PSR B1257+12 (see
     // STARMAP_DISPLAY_DOMAIN's comment) — 270° puts it at the bottom of
     // the map, the single largest open gap in the angle list (hd-209458

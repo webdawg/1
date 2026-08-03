@@ -85,6 +85,46 @@ export function formatUtcOffset(date: Date): string {
   return minutes === 0 ? `UTC${sign}${hours}` : `UTC${sign}${hours}:${String(minutes).padStart(2, "0")}`;
 }
 
+// The Sun's real height above the galactic midplane (Bennett & Bovy, 2019:
+// 20.8 ± 0.3 pc). Every star curated in starFacts.ts sits within ~2300 ly
+// of the Sun — negligible against the ~26,673 ly to the galactic center —
+// so the whole curated cluster shares this one real height above the
+// plane rather than needing 16 separately-sourced numbers; Sagittarius A*
+// itself sits *at* the plane (height 0), being the disk's own center.
+const PARSEC_IN_LY = 3.26156;
+export const SUN_HEIGHT_ABOVE_GALACTIC_PLANE_LY = 20.8 * PARSEC_IN_LY;
+
+// One full lap around the galactic center ("a galactic year") — derived
+// from the same real circumference/speed GALACTIC_GRAVITY_MPS2 above is
+// built from, not a separately-sourced number, and lands close to the
+// real textbook estimate (~225–250 million years) as a sanity check.
+export const GALACTIC_ORBIT_PERIOD_SECONDS =
+  (2 * Math.PI * GALACTIC_CENTER_DISTANCE_LY * LY_IN_METERS) / GALACTIC_ORBITAL_SPEED_MPS;
+
+/**
+ * Illustrative, NOT a real measurement: real astronomy has no agreed
+ * reference epoch (or a precise enough period) to say exactly where the
+ * Sun currently sits in its ~225-million-year galactic orbit. This just
+ * advances a phase angle in real time at the real orbital rate, anchored
+ * arbitrarily to REFERENCE_EPOCH_MS (0° there) — a convention, the same
+ * way starFacts.ts's displayAngleDeg values are hand-assigned rather than
+ * measured, not a fact about the Sun's true orbital phase. Changes by
+ * roughly 5e-14° per second — genuinely, correctly, imperceptibly slow;
+ * unlike GALACTIC TIMES' universe-age reading, this one isn't meant to
+ * visibly tick, because the real thing it represents doesn't either.
+ */
+export function galacticOrbitPhaseDeg(now: Date): number {
+  const elapsedSeconds = (now.getTime() - REFERENCE_EPOCH_MS) / 1000;
+  const fraction = (elapsedSeconds / GALACTIC_ORBIT_PERIOD_SECONDS) % 1;
+  return ((fraction * 360) % 360 + 360) % 360;
+}
+
+/** A degree value, auto-scaled like formatGravity — this one's realistically always tiny (see galacticOrbitPhaseDeg), so it's almost always exponential notation. */
+export function formatGalacticPhase(deg: number): string {
+  if (deg >= 0.001 && deg < 100_000) return `${deg.toFixed(6)}°`;
+  return `${deg.toExponential(3)}°`;
+}
+
 /**
  * What a node needs, physically, to compute its gravitational time
  * dilation: its own local surface gravity/radius (a planet, or a star —

@@ -141,12 +141,18 @@ purpose shifts or a new one is added.
   Constant" — not a felt quantity, a building block for a later
   calculation), and real circular orbital velocity
   (`orbitalVelocityAtDistance`, plus the fixed `GALACTIC_ORBITAL_SPEED_MPS`
-  constant `GALACTIC_GRAVITY_MPS2` is itself derived from). `worldTree.ts`'s
-  `getDilationInputs` maps a node id to what this needs; `App.tsx`
-  accumulates drift each tick into `session.ts`'s persisted `timeDriftMs`,
-  surfaced via the `time` command
-  and continuously on the HUD's Time/Gravity/Velocity rows. See
-  `SPEC.md`'s Time, Gravity, and Velocity sections.
+  constant `GALACTIC_GRAVITY_MPS2` is itself derived from), and the
+  Sun's real galactic position — `SUN_HEIGHT_ABOVE_GALACTIC_PLANE_LY`
+  (~67.8 ly, Bennett & Bovy 2019, shared by the whole curated star
+  cluster — see `SPEC.md`'s Galactic position section for why one real
+  number, not sixteen) plus `galacticOrbitPhaseDeg`, an explicitly
+  illustrative (not measured) orbital phase derived from the real
+  `GALACTIC_ORBIT_PERIOD_SECONDS`. `worldTree.ts`'s `getDilationInputs`
+  maps a node id to what this needs; `App.tsx` accumulates drift each
+  tick into `session.ts`'s persisted `timeDriftMs`, surfaced via the
+  `time` command and continuously on the HUD's Time/Gravity/Velocity/
+  Galactic position rows. See `SPEC.md`'s Time, Gravity, Velocity, and
+  Galactic position sections.
 
 Run it: `cd tui && npm install && npm start`
 Typecheck: `cd tui && npm run typecheck`
@@ -450,6 +456,33 @@ genuinely isolated at a typical terminal height (confirmed at 100×45),
 though an 80×30 floor still crowds it against whatever else is near
 that rim position, the same accepted trade-off every crowded cluster in
 this view already has.
+
+Also added this session: a "GALACTIC POSITION" HUD group answering
+"where are we relative to the black hole" — real distance from the
+galactic center (already-curated `GALACTIC_CENTER_DISTANCE_LY`) plus
+real height above the galactic midplane (new:
+`SUN_HEIGHT_ABOVE_GALACTIC_PLANE_LY`, ~67.8 ly, Bennett & Bovy 2019).
+Deliberately one real number shared by the whole curated star cluster
+rather than 16 fabricated per-star ones: every curated star sits within
+~2300 ly of the Sun, negligible against the ~26,673 ly to the galactic
+center, so the entire cluster is honestly at the same height on this
+scale — flagged directly to the user before building, rather than
+silently approximating data this codebase otherwise always cites
+precisely. A second row, `[ORBITAL PHASE (illustrative) - ...]`, adds
+an explicitly-labeled non-real companion: real astronomy has no agreed
+reference epoch for where the Sun sits in its ~228-million-year lap
+around the galactic center (period itself derived, not fetched, from
+already-curated circumference/speed constants — a good sanity check
+against the real ~225–250 Myr textbook range), so this advances a phase
+angle in real time at the real rate from an arbitrary zero point, the
+same hand-assigned convention `starFacts.ts`'s `displayAngleDeg`
+already uses. Deliberately not engineered to visibly tick the way
+GALACTIC TIMES' universe-age reading was — the real rate is
+~5×10⁻¹⁴°/second, and a static-looking number is correct here, not a
+bug. Also swapped Sagittarius A*'s glyph from `(●)` to `▓█▓` on direct
+feedback that a plain circle "wasn't cutting it" — verified via tmux
+that Unicode block-drawing characters render single-width, same as
+every other glyph in this codebase, so no new column-math risk.
 
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,
