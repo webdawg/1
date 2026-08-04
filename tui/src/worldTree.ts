@@ -35,6 +35,7 @@ import {
   type ExoplanetKind,
 } from "./starFacts.js";
 import { AU_IN_METERS, type DilationInputs } from "./relativity.js";
+import type { PinnedEdge } from "./layout.js";
 
 export type LeafKind = "surface" | "orbit-log" | "rings" | "notes";
 export type NodeKind =
@@ -57,6 +58,8 @@ export interface OrbitEntry {
   angleDeg: number;
   /** Arbitrary display-scale distance (AU for real bodies, ring index otherwise). */
   distance: number;
+  /** See layout.ts's PinnedEdge — an entry that always sticks to a fixed edge of the grid instead of the normal distance/angle math. */
+  pinnedEdge?: PinnedEdge;
 }
 
 export interface DistanceDomain {
@@ -492,12 +495,10 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
 
   if (nodeId === STARMAP_ID) {
     const leaves = leafChildren(nodeId);
-    // Reverted: Sagittarius A* previously took over the exact center
-    // (distance 0) here, with the Sun pushed out to its own real distance
-    // at the rim. Undone on direct follow-up request — Sgr A* now reads
-    // better positioned to the side (see its own displayAngleDeg comment
-    // in starFacts.ts) than dead center, so the Sun goes back to its
-    // original near-center "home" spot.
+    // Sol sits at its usual near-center "home" spot (see the distance
+    // comment below) — Sagittarius A* previously took over the exact
+    // center, then moved to a rim angle, both reverted; see its own entry
+    // below for where it landed for good.
     const solEntry: OrbitEntry = {
       id: "sun",
       label: "Sun",
@@ -517,6 +518,14 @@ export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
         glyph: facts.glyph,
         angleDeg: facts.displayAngleDeg,
         distance: facts.distanceLy,
+        // Sagittarius A* alone: pinned to the grid's literal left edge
+        // (layout.ts's pinnedEdge, not the normal distance/angle math),
+        // per "should always be on the very edge of the screen" — unlike
+        // an ordinary out-of-domain clamp-to-rim, this can't drift inward
+        // from zoom, domain changes, or icon-crowding nudges, and reads
+        // as touching the NAVIGATION tile's own border rather than just
+        // sitting near it.
+        pinnedEdge: starId === "sagittarius-a-star" ? "left" : undefined,
       };
     });
     return [...leaves, solEntry, ...starEntries];

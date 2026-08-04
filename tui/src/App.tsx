@@ -258,9 +258,15 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   // Zoom is a property of the current view, not something that should
   // follow you to a different one — land already spread out as far as a
   // single sacrificed outlier allows, rather than always starting flat at
-  // 1x and making the user zoom in by hand every time.
+  // 1x and making the user zoom in by hand every time. A pinnedEdge entry
+  // (e.g. Sagittarius A*) is excluded too, same as leaves — its position
+  // doesn't respond to zoom at all, so it's not a real spread target.
   const autoZoomLevel = useMemo(
-    () => computeAutoZoomLevel(children.filter((c) => parseLeafId(c.id) === null).map((c) => c.distance), domain),
+    () =>
+      computeAutoZoomLevel(
+        children.filter((c) => parseLeafId(c.id) === null && !c.pinnedEdge).map((c) => c.distance),
+        domain
+      ),
     [children, domain]
   );
   useEffect(() => {

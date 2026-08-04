@@ -94,10 +94,36 @@ export function computeAutoZoomLevel(distances: number[], domain: { min: number;
   return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, level));
 }
 
+export type PinnedEdge = "left" | "right" | "top" | "bottom";
+
 interface PositionedEntry {
   id: string;
   angleDeg: number;
   distance: number;
+  /**
+   * When set, this entry skips the normal distance/angle math entirely and
+   * sticks to a fixed edge column/row of the grid — for a body that should
+   * always read as genuinely at the very edge of the screen, immune to
+   * zoom level, domain changes, and grid-size changes (unlike an ordinary
+   * out-of-domain distance, which still clamps to maxRadius but drifts
+   * with those — see Sagittarius A*, worldTree.ts's STARMAP_ID branch).
+   */
+  pinnedEdge?: PinnedEdge;
+}
+
+function pinnedEdgePosition(edge: PinnedEdge, gridWidth: number, gridHeight: number): GridPoint {
+  const centerX = Math.floor(gridWidth / 2);
+  const centerY = Math.floor(gridHeight / 2);
+  switch (edge) {
+    case "left":
+      return { x: 0, y: centerY };
+    case "right":
+      return { x: gridWidth - 1, y: centerY };
+    case "top":
+      return { x: centerX, y: 0 };
+    case "bottom":
+      return { x: centerX, y: gridHeight - 1 };
+  }
 }
 
 /**
@@ -120,6 +146,10 @@ export function computeGridPositions(
 
   const positions = new Map<string, GridPoint>();
   for (const entry of entries) {
+    if (entry.pinnedEdge) {
+      positions.set(entry.id, pinnedEdgePosition(entry.pinnedEdge, gridWidth, gridHeight));
+      continue;
+    }
     // Zero is a deliberate signal, not just a very small number: it means
     // "at the reference point itself," so it plots dead center rather than
     // being floored up to minRadius like any other near-zero distance.

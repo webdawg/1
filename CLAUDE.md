@@ -116,7 +116,10 @@ purpose shifts or a new one is added.
 - `src/layout.ts` — polar-to-grid math, distance scaling, plus
   `computeGridPositions` (single source of truth for where each entry
   lands on the grid — used by both `SolarView` for rendering and
-  `spatialNav` for direction decisions) and the shared `toClockHour`.
+  `spatialNav` for direction decisions), the shared `toClockHour`, and
+  `pinnedEdge` (an entry can request a fixed grid edge instead of the
+  normal distance/angle math — currently only Sagittarius A* uses it,
+  see `SPEC.md`'s Placement rules section).
 - `src/session.ts` — local file-based session persistence. Its own comment
   says it's "a stand-in for the future multi-user server" — shape mirrors
   what a real server would hand out (session id + resume key). Default new
@@ -510,6 +513,28 @@ the Sun* (the only real number available for them — real
 distance-from-Sgr-A* isn't curated and would cluster them all within a
 narrow band anyway, flagged to the user during the center-placement
 round).
+
+One more follow-up landed Sgr A*'s position for good this session: "it
+should always be on the very edge of the screen... you could make it
+part of the tile border." The 180°/clamp-to-rim placement above was
+still ordinary distance/angle math underneath — same as any other star,
+just with a distance so large it always clamps — so it could still
+drift with zoom level or get nudged by the icon-crowding system, same
+as anything else. Built a genuinely new positioning mode instead:
+`OrbitEntry` gained an optional `pinnedEdge: "left" | "right" | "top" |
+"bottom"` field (`worldTree.ts`), resolved in `layout.ts`'s
+`computeGridPositions` ahead of the normal polar math — a fixed grid
+column/row that zoom, domain, and grid-size changes can't move.
+Sagittarius A* is the only entry that sets it (`"left"`). Also updated
+`App.tsx`'s auto-zoom input to exclude pinned entries, the same way it
+already excludes leaves and the distance-0 home entry, since a fixed
+position isn't a real spread target. Verified via tmux at both 100×45
+and 80×30: the glyph now sits flush against the NAVIGATION tile's
+actual border column, full label visible even at the small floor where
+it used to crowd against neighbors; confirmed still selectable via
+arrow-key spatial nav and still travelable (session-file-resume to
+reach it directly, `Enter`, real dilation/gravity/velocity figures all
+came through correctly on arrival).
 
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,

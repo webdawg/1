@@ -62,24 +62,28 @@ folded into `STARMAP_DISPLAY_DOMAIN`'s max (still 2300 ly, PSR
 B1257+12's real distance): widening the shared domain to fit one object
 11x farther than the next-farthest curated star was tried and reverted,
 since it forced auto-zoom to max out (64x) and crowded all 16 other
-stars into unreadable overlap. Sgr A* instead just clamps to the same
-outer rim any out-of-domain distance already does. `displayAngleDeg`
-went through three revisions before landing: initially 5° (collided
-with the tightest gap in the whole map, between PSR B1257+12 and
-Proxima Centauri), then briefly moved to be the star map's exact
-*center* (`distance` overridden to `0` — the same convention
-`starSelfEntry` uses for a star you're standing on — with the Sun
-pushed out to its own real rim distance instead), then reverted again
-on direct follow-up request to sit at **180°, the left side of the
-NAVIGATION tile**, clamped to the rim same as before, still the map's
-single farthest-out object. The center-placement round-trip is kept
-here as a record, not just erased, since the same "grid resolution is
-coarse enough that 'looks isolated' has to be checked live, not assumed
-from the angle number" lesson applied at every step — confirmed via
-tmux at both 100×45 (clean, own row, no collision with TRAPPIST-1
-despite sharing 180° — different radius keeps them apart) and 80×30
-(readable, some icon crowding at that floor, the same accepted
-trade-off every crowded cluster in this view already has).
+stars into unreadable overlap.
+
+**Position went through several revisions** before landing on a
+mechanism built specifically for it (`layout.ts`'s `pinnedEdge` —
+see Layout below): initially 5° with the ordinary distance/angle math
+(collided with the tightest gap in the whole map, between PSR B1257+12
+and Proxima Centauri, clamped to the rim like any out-of-domain
+distance); then briefly moved to be the star map's exact *center*
+(`distance` overridden to `0`, the same convention `starSelfEntry` uses
+for a star you're standing on, with the Sun pushed out to the rim
+instead) and reverted; then to 180° (left side of the NAVIGATION tile)
+still via the ordinary clamp-to-rim math, still subject to zoom level
+and the same icon-crowding nudges any other star gets. Landed for good
+on a fourth, qualitatively different approach — a literal pin to the
+grid's left edge column, immune to all of that — per "should always be
+on the very edge of the screen... you could make it part of the tile
+border." `worldTree.ts`'s `getOrbitChildren`, for `STARMAP_ID`, sets
+`pinnedEdge: "left"` only on this one entry; every other star still
+uses the normal math untouched. Confirmed via tmux at both 100×45 and
+80×30: the glyph now sits flush against the tile's actual border
+column, with its full label visible even at the small floor where every
+other far-out star still crowds.
 
 ## Layout
 
@@ -235,6 +239,27 @@ you are," not something that should drift). When centered on a star,
 there's no separate fixed marker — the star's own self-entry (distance 0,
 see Star travel transition) goes through the same two passes as
 everything else, landing exactly at the grid center.
+
+**Pinned-edge entries** are a third, narrower positioning mode —
+`OrbitEntry`'s optional `pinnedEdge: "left" | "right" | "top" | "bottom"`
+(`worldTree.ts`), resolved in `layout.ts`'s `computeGridPositions`
+*before* the normal distance/angle branch runs: instead of
+`polarToGrid`, the entry gets a fixed column/row (`x: 0` for `"left"`,
+`gridWidth - 1` for `"right"`, etc., vertically/horizontally centered on
+the other axis) that doesn't move with zoom, domain changes, or grid
+size. Currently used for exactly one entry, Sagittarius A* in the star
+map (see World model above) — an ordinary out-of-domain distance
+already clamps to the outer rim, but that rim's radius still depends on
+`gridWidth`/`gridHeight` and can still drift or get nudged by the
+crowding system in `findFreeSlot`; `pinnedEdge` guarantees a specific
+screen position no matter what, reading as attached to the tile's own
+border rather than just near it. Still goes through the normal two-pass
+icon/label stamping above (not exempt from collision — it just starts
+from a different fallback position). `App.tsx`'s auto-zoom input
+(`computeAutoZoomLevel`) excludes pinned entries the same way it already
+excludes leaves and the distance-0 home entry, since their position
+doesn't respond to zoom at all — including one in "what needs to fit"
+wouldn't mean anything.
 
 ## Spatial navigation
 
