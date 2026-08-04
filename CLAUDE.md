@@ -129,7 +129,10 @@ purpose shifts or a new one is added.
   (`worldTree.ts`'s `isStarBoundary`). Self-contained frame loop, reuses
   `layout.ts`'s `polarToGrid`, no new position math. The traveler figure
   it draws depends on `playerType` (HUMAN cyan stick figure vs. LLM green
-  circuit figure) — see `SPEC.md`'s Player section.
+  circuit figure) — see `SPEC.md`'s Player section. Sagittarius A*
+  crossings use a different setup cinematic instead — a door, not a
+  star dive (`portal` prop, `buildPortalSetupFrame`) — see `SPEC.md`'s
+  Star travel transition section's portal-variant subsection.
 - `src/components/Console.tsx` — the Half-Life-style drop-down console
   (`~` to open, Escape/`close`/`exit` to close, both animated slides).
   Occupies the same top-tile slot as `SolarView`/`ContentView`/
@@ -535,6 +538,32 @@ it used to crowd against neighbors; confirmed still selectable via
 arrow-key spatial nav and still travelable (session-file-resume to
 reach it directly, `Enter`, real dilation/gravity/velocity figures all
 came through correctly on arrival).
+
+Also added this session: a distinct SOLAR BASE JUMP setup cinematic for
+Sagittarius A* alone, per direct request ("a man stepping through a
+portal - just a clear door to another world") — a door, not a star to
+dive through. `WarpTransition.tsx` gained a `portal` prop, a parallel
+`PORTAL_SETUP_PHASES` (4+3+5 steps: approach the door, watch its
+interior fill in `░`→`▒`→`▓`, watch the traveler stand at the threshold
+then vanish — stepped through — leaving a glowing empty doorway) and
+`buildPortalSetupFrame`, alongside three new `TransitionPhase` values
+(`portalApproach`/`portalOpen`/`portalStep`) and matching
+`PHASE_MESSAGES` entries in `App.tsx`. `startStarTransition` sets the
+flag whenever the star involved is `"sagittarius-a-star"`, so both
+directions (arriving and leaving) get the portal automatically, same
+mechanism `isStarBoundary` already used for every other star — no new
+trigger logic needed. The shared **traveling** phase (quantum words,
+scaled by real distance) is unaffected either way. New drawing helpers
+(`stampDoorFrame`, `stampDoorInterior`, `stampTravelerAt` — the last
+anchors the figure by its feet rather than polar-positioning it, since
+a rectangular door isn't circular) reuse the same box-drawing/block-
+shade character families already verified single-width-safe elsewhere
+in this codebase (the star map's `▓█▓` glyph). Verified via tmux at
+both 80×30 and 100×45, frame-by-frame (0.2s-spaced captures matching
+`FRAME_MS`) to confirm the full door-opening/stepping-through sequence
+renders as designed with no border corruption, for both directions and
+both `playerType`s (HUMAN/LLM figure swap works identically to the star
+sequence, same `TRAVELER_FIGURES` lookup).
 
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,

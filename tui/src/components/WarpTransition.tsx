@@ -3,7 +3,15 @@ import { Box, Text } from "ink";
 import { polarToGrid } from "../layout.js";
 import type { PlayerType } from "../session.js";
 
-export type TransitionPhase = "approach" | "rotate" | "open" | "darkspot" | "traveling";
+export type TransitionPhase =
+  | "approach"
+  | "rotate"
+  | "open"
+  | "darkspot"
+  | "traveling"
+  | "portalApproach"
+  | "portalOpen"
+  | "portalStep";
 
 interface Props {
   gridWidth: number;
@@ -12,6 +20,8 @@ interface Props {
   playerType: PlayerType;
   /** How long the "traveling" phase lasts — real distance drives this, see layout.ts's computeTravelDurationMs. */
   travelMs: number;
+  /** Sagittarius A* alone uses this — a door, not a star to dive through. See PORTAL_SETUP_PHASES/buildPortalSetupFrame. */
+  portal: boolean;
   onPhaseChange: (phase: TransitionPhase) => void;
   /** Fired once the whole sequence (setup + travel) has finished. */
   onComplete: () => void;
@@ -44,6 +54,28 @@ const TRAVELER_FIGURES: Record<PlayerType, { lines: string[]; color: string }> =
   HUMAN: { lines: [" o ", "/|\\", "/ \\"], color: "cyan" },
   LLM: { lines: [" ◆ ", "<#>", "==="], color: "green" },
 };
+
+// Sagittarius A* alone uses this sequence instead of the star-ring one
+// above — "a man stepping through a portal - just a clear door to another
+// world," per direct request. Same 12-step/4-phase shape as SETUP_PHASES
+// (4 approach + 3 open + 5 step) so the two modes take the same real time,
+// just approach/open/darkspot's roles are played by portalApproach/
+// portalOpen/portalStep instead.
+const PORTAL_SETUP_PHASES: TransitionPhase[] = [
+  "portalApproach", "portalApproach", "portalApproach", "portalApproach",
+  "portalOpen", "portalOpen", "portalOpen",
+  "portalStep", "portalStep", "portalStep", "portalStep", "portalStep",
+];
+
+const DOOR_WIDTH = 7;
+const DOOR_HEIGHT = 5;
+// How far below the door the traveler starts, at each portalApproach
+// substep — decreasing, so it visibly walks closer frame by frame.
+const APPROACH_DISTANCES = [6, 4, 2, 1];
+// Door interior fill as it "opens" — same block-shade progression used
+// elsewhere in this codebase (e.g. the star-dive's own darkening disk),
+// confirmed single-width safe rather than reaching for a fancier symbol.
+const REVEAL_CHARS = ["░", "▒", "▓"];
 
 // Quantum data drifting past as the HUMAN mind bends and becomes part of
 // the universe — alien thoughts, alien machine messages, whatever. Mixed
@@ -116,6 +148,77 @@ function stampTraveler(
   }
 }
 
+/** The traveler for the portal sequence, anchored by its feet (bottom-center) rather than polar-positioned — a door isn't circular, so there's no "radius" to place it at. */
+function stampTravelerAt(
+  grid: Cell[][],
+  footX: number,
+  footY: number,
+  playerType: PlayerType,
+  gridWidth: number,
+  gridHeight: number
+): void {
+  const { lines, color } = TRAVELER_FIGURES[playerType];
+  const topRow = footY - (lines.length - 1);
+  for (let r = 0; r < lines.length; r++) {
+    const row = topRow + r;
+    if (row < 0 || row >= gridHeight) continue;
+    const line = lines[r];
+    for (let c = 0; c < line.length; c++) {
+      const col = footX - 1 + c;
+      if (col < 0 || col >= gridWidth || line[c] === " ") continue;
+      grid[row][col] = { char: line[c], color, bold: true };
+    }
+  }
+}
+
+/** The door's frame only — a plain rectangle, "just a clear door," not filled in until stampDoorInterior. */
+function stampDoorFrame(grid: Cell[][], centerX: number, centerY: number, gridWidth: number, gridHeight: number): void {
+  const left = centerX - Math.floor(DOOR_WIDTH / 2);
+  const top = centerY - Math.floor(DOOR_HEIGHT / 2);
+  for (let r = 0; r < DOOR_HEIGHT; r++) {
+    const row = top + r;
+    if (row < 0 || row >= gridHeight) continue;
+    const isTopRow = r === 0;
+    const isBottomRow = r === DOOR_HEIGHT - 1;
+    for (let c = 0; c < DOOR_WIDTH; c++) {
+      const col = left + c;
+      if (col < 0 || col >= gridWidth) continue;
+      const isLeftCol = c === 0;
+      const isRightCol = c === DOOR_WIDTH - 1;
+      let char: string | null = null;
+      if (isTopRow && isLeftCol) char = "┌";
+      else if (isTopRow && isRightCol) char = "┐";
+      else if (isBottomRow && isLeftCol) char = "└";
+      else if (isBottomRow && isRightCol) char = "┘";
+      else if (isTopRow || isBottomRow) char = "─";
+      else if (isLeftCol || isRightCol) char = "│";
+      if (char) grid[row][col] = { char, color: "white", bold: true };
+    }
+  }
+}
+
+/** Fills the door's interior — "another world" behind the frame, per the request. Only called once the door has "opened." */
+function stampDoorInterior(
+  grid: Cell[][],
+  centerX: number,
+  centerY: number,
+  char: string,
+  gridWidth: number,
+  gridHeight: number
+): void {
+  const left = centerX - Math.floor(DOOR_WIDTH / 2) + 1;
+  const top = centerY - Math.floor(DOOR_HEIGHT / 2) + 1;
+  for (let r = 0; r < DOOR_HEIGHT - 2; r++) {
+    const row = top + r;
+    if (row < 0 || row >= gridHeight) continue;
+    for (let c = 0; c < DOOR_WIDTH - 2; c++) {
+      const col = left + c;
+      if (col < 0 || col >= gridWidth) continue;
+      grid[row][col] = { char, color: "magenta", bold: true };
+    }
+  }
+}
+
 function fillDisk(
   grid: Cell[][],
   centerX: number,
@@ -135,7 +238,7 @@ function fillDisk(
   }
 }
 
-function buildSetupFrame(step: number, playerType: PlayerType, gridWidth: number, gridHeight: number): Cell[][] {
+function buildStarSetupFrame(step: number, playerType: PlayerType, gridWidth: number, gridHeight: number): Cell[][] {
   const grid = blankGrid(gridWidth, gridHeight);
   const centerX = Math.floor(gridWidth / 2);
   const centerY = Math.floor(gridHeight / 2);
@@ -161,6 +264,35 @@ function buildSetupFrame(step: number, playerType: PlayerType, gridWidth: number
   } else if (phase === "darkspot") {
     const radii = [2, 5, Math.max(gridWidth, gridHeight)];
     fillDisk(grid, centerX, centerY, radii[subStep], "█", "gray", gridWidth, gridHeight);
+  }
+
+  return grid;
+}
+
+function buildPortalSetupFrame(step: number, playerType: PlayerType, gridWidth: number, gridHeight: number): Cell[][] {
+  const grid = blankGrid(gridWidth, gridHeight);
+  const centerX = Math.floor(gridWidth / 2);
+  const centerY = Math.floor(gridHeight / 2);
+  const doorBottom = centerY + Math.floor(DOOR_HEIGHT / 2);
+  const phase = PORTAL_SETUP_PHASES[step];
+
+  stampDoorFrame(grid, centerX, centerY, gridWidth, gridHeight);
+
+  if (phase === "portalApproach") {
+    const subStep = step;
+    stampTravelerAt(grid, centerX, doorBottom + APPROACH_DISTANCES[subStep], playerType, gridWidth, gridHeight);
+  } else if (phase === "portalOpen") {
+    const subStep = step - 4;
+    stampDoorInterior(grid, centerX, centerY, REVEAL_CHARS[subStep], gridWidth, gridHeight);
+    stampTravelerAt(grid, centerX, doorBottom, playerType, gridWidth, gridHeight);
+  } else if (phase === "portalStep") {
+    const subStep = step - 7;
+    stampDoorInterior(grid, centerX, centerY, REVEAL_CHARS[REVEAL_CHARS.length - 1], gridWidth, gridHeight);
+    // The traveler stands at the threshold for the first couple of
+    // sub-steps, then is gone — stepped through — for the rest, leaving
+    // just the glowing doorway (the "clear door to another world" the
+    // request asked for).
+    if (subStep < 2) stampTravelerAt(grid, centerX, doorBottom, playerType, gridWidth, gridHeight);
   }
 
   return grid;
@@ -213,26 +345,35 @@ function TransitionRow({ row }: { row: Cell[] }): React.JSX.Element {
   );
 }
 
-export default function WarpTransition({ gridWidth, gridHeight, playerType, travelMs, onPhaseChange, onComplete }: Props): React.JSX.Element {
+export default function WarpTransition({
+  gridWidth,
+  gridHeight,
+  playerType,
+  travelMs,
+  portal,
+  onPhaseChange,
+  onComplete,
+}: Props): React.JSX.Element {
   const [step, setStep] = useState(0);
   const [traveling, setTraveling] = useState(false);
   const [travelWords, setTravelWords] = useState<TravelWord[]>([]);
+  const setupPhases = portal ? PORTAL_SETUP_PHASES : SETUP_PHASES;
 
   useEffect(() => {
     if (traveling) return;
     const id = setTimeout(() => {
-      if (step < SETUP_PHASES.length - 1) setStep((s) => s + 1);
+      if (step < setupPhases.length - 1) setStep((s) => s + 1);
       else setTraveling(true);
     }, FRAME_MS);
     return () => clearTimeout(id);
-  }, [step, traveling]);
+  }, [step, traveling, setupPhases]);
 
   useEffect(() => {
-    onPhaseChange(traveling ? "traveling" : SETUP_PHASES[step]);
+    onPhaseChange(traveling ? "traveling" : setupPhases[step]);
     // Reporting the derived phase whenever step/traveling change is the
     // whole point — onPhaseChange itself isn't a dependency on purpose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [traveling, step]);
+  }, [traveling, step, setupPhases]);
 
   useEffect(() => {
     if (!traveling) return;
@@ -248,7 +389,9 @@ export default function WarpTransition({ gridWidth, gridHeight, playerType, trav
 
   const grid = traveling
     ? buildTravelingFrame(travelWords, gridWidth, gridHeight)
-    : buildSetupFrame(step, playerType, gridWidth, gridHeight);
+    : portal
+      ? buildPortalSetupFrame(step, playerType, gridWidth, gridHeight)
+      : buildStarSetupFrame(step, playerType, gridWidth, gridHeight);
 
   return (
     <Box flexDirection="column">

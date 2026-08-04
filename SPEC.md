@@ -445,6 +445,41 @@ per jump (`App.tsx`'s `startStarTransition`, shared by both the forward
 `key.return` case and `goBack()`) from whichever id involved in the
 crossing is the star.
 
+### The portal variant — Sagittarius A* only
+
+Crossing to or from Sagittarius A* specifically plays a different setup
+sequence — "a man stepping through a portal, just a clear door to
+another world," per direct request, not the star-ring/dive one above.
+`App.tsx`'s `startStarTransition` sets a `portal` flag (`starId ===
+"sagittarius-a-star"`) alongside the existing `travelMs`, carried in
+`transition` state and passed straight through to `WarpTransition` as a
+prop; the component picks `buildPortalSetupFrame`/`PORTAL_SETUP_PHASES`
+over the star versions when it's set. The shared **traveling** phase
+(quantum words) and its real-distance-scaled duration are unaffected —
+only the four-phase setup cinematic before it differs:
+
+1. **portalApproach** (4 × 200ms) — a plain rectangular door frame
+   (`┌─────┐`/`│ │`/`└─────┘`, `stampDoorFrame`) appears center-grid; the
+   traveler walks toward it from below, decreasing distance each frame
+   (`stampTravelerAt`, anchored by its feet rather than polar-positioned
+   — a door isn't circular). *"Approaching a door to {label}..."*
+2. **portalOpen** (3 × 200ms) — the door's interior fills in
+   (`░`→`▒`→`▓`, `stampDoorInterior`) while the traveler stands at the
+   threshold. *"The door opens onto {label}..."*
+3. **portalStep** (5 × 200ms) — traveler still visible at the threshold
+   for the first 2 frames, then gone (stepped through) for the
+   remaining 3, leaving just the fully "open" glowing doorway.
+   *"Stepping through..."*
+
+Same 12-step, ~2.4s total shape as the star sequence (4+3+5 vs. 3+3+3+3)
+so the two modes take identical real time regardless of which one plays;
+only `TransitionPhase` names, the drawing functions, and
+`PHASE_MESSAGES` entries differ. Verified via tmux at both 80×30 and
+100×45, for both directions (arriving at and leaving Sgr A*) and both
+`playerType`s (the HUMAN/LLM figure swap works here exactly like it
+does for the star sequence, since both call the same
+`TRAVELER_FIGURES` lookup).
+
 ## Time — three times
 
 `SCOPE.md`'s 2026-07-30 addenda: the engine tracks three times at once,

@@ -60,6 +60,12 @@ const PHASE_MESSAGES: Record<TransitionPhase, (label: string) => string> = {
   open: () => "A path opens at its heart...",
   darkspot: () => "Pulled into the GRAVITATIONAL WELL...",
   traveling: () => "SOLAR BASE JUMP in progress — quantum data drifting past...",
+  // Sagittarius A* alone uses this alternate sequence — a door, not a star
+  // to dive through — per direct request ("a man stepping through a
+  // portal - just a clear door to another world"). See WarpTransition.tsx.
+  portalApproach: (label) => `Approaching a door to ${label}...`,
+  portalOpen: (label) => `The door opens onto ${label}...`,
+  portalStep: () => "Stepping through...",
 };
 
 /**
@@ -134,9 +140,13 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   const [path, setPath] = useState<string[]>(session.path);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(0);
-  const [transition, setTransition] = useState<{ nextPath: string[]; label: string; logLine: string; travelMs: number } | null>(
-    null
-  );
+  const [transition, setTransition] = useState<{
+    nextPath: string[];
+    label: string;
+    logLine: string;
+    travelMs: number;
+    portal: boolean;
+  } | null>(null);
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>("approach");
   const [mode, setMode] = useState<"nav" | "command">("nav");
   const [paused, setPaused] = useState(false);
@@ -289,8 +299,11 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   function startStarTransition(nextPath: string[], label: string, logLine: string) {
     const starId = isStarId(centerId) ? centerId : nextPath[nextPath.length - 1];
     const travelMs = computeTravelDurationMs(getStarDistanceLy(starId));
-    setTransitionPhase("approach");
-    setTransition({ nextPath, label, logLine, travelMs });
+    // Sagittarius A* isn't a star to dive through — it gets its own door/
+    // portal sequence instead (see PHASE_MESSAGES and WarpTransition.tsx).
+    const portal = starId === "sagittarius-a-star";
+    setTransitionPhase(portal ? "portalApproach" : "approach");
+    setTransition({ nextPath, label, logLine, travelMs, portal });
   }
 
   /** Pops one level back, animating the transition if it crosses the star/star-map boundary. Returns whether it did anything. */
@@ -537,6 +550,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
                 gridHeight={gridHeight}
                 playerType={playerType}
                 travelMs={transition.travelMs}
+                portal={transition.portal}
                 onPhaseChange={setTransitionPhase}
                 onComplete={completeTransition}
               />
