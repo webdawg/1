@@ -50,7 +50,7 @@ const SETUP_PHASES: TransitionPhase[] = [
 // open phases; already consumed by the time the dark spot forms. HUMAN is
 // arms-and-legs; LLM is deliberately not humanoid (a core, a circuit body,
 // a hovering base instead of legs) — see SCOPE.md's 2026-07-29 addenda.
-const TRAVELER_FIGURES: Record<PlayerType, { lines: string[]; color: string }> = {
+export const TRAVELER_FIGURES: Record<PlayerType, { lines: string[]; color: string }> = {
   HUMAN: { lines: [" o ", "/|\\", "/ \\"], color: "cyan" },
   LLM: { lines: [" ◆ ", "<#>", "==="], color: "green" },
 };

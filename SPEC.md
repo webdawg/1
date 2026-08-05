@@ -480,6 +480,67 @@ only `TransitionPhase` names, the drawing functions, and
 does for the star sequence, since both call the same
 `TRAVELER_FIGURES` lookup).
 
+## Random landing — what's through Sagittarius A*
+
+Per `SCOPE.md`'s 2026-08-05 addendum: arriving at Sagittarius A* doesn't
+land on a real destination the way every other star does — it generates
+a brand-new, wholly fictional star/planet/civilization and lands you
+directly on the planet's surface, with its own brief landing animation.
+**Fresh every single trip** — an explicit choice, confirmed directly
+with the user over the alternative (a stable, seeded-once, revisitable
+destination): nothing generated here is persisted anywhere, and you can
+never return to the same alien world twice. This is the one deliberately
+fictional corner of the engine — everywhere else (planets, moons, real
+stars, curated exoplanets, Sgr A* itself) is real, curated data;
+`randomSystem.ts`'s own file comment makes this contrast explicit so it
+doesn't get mistaken for another curated `*Facts.ts` file later.
+
+`randomSystem.ts`'s `generateRandomLanding()` (pure, no React) mad-libs
+a `RandomLanding` — star name, planet name, civilization name, and a
+one-line description — from small curated word banks (name
+prefixes/suffixes, civilization adjectives/nouns, a pool of civilization
+traits), each call a fresh `Math.random()` roll. `App.tsx`'s
+`completeTransition` calls it exactly once, only on arrival (checking
+`current.nextPath`'s last segment is `"sagittarius-a-star"` — leaving
+doesn't touch it), storing the result in `randomLanding` state — deliberately
+*not* added to `session.ts`'s persisted `SessionData`, matching "not
+persisted anywhere." A safety-net effect covers the one edge case that
+would otherwise show a blank/stale screen: resuming a session saved
+mid-visit (`path` itself *is* persisted, so `centerId` can be
+`"sagittarius-a-star"` on a fresh process start with no `randomLanding`
+in memory yet) — it just generates a new one immediately, which is
+arguably even more honest to "fresh every time" than reusing whatever
+was there before you quit.
+
+While `randomLanding` is set and `centerId` is `sagittarius-a-star`
+(`App.tsx`'s `showingRandomLanding`), the normal star view is replaced
+entirely: `children` is filtered down to just the "travel back out"
+self-entry (this isn't a spatial grid with orbit entries to explore —
+Enter only ever means "go back," same as Escape), the focused-entry
+footer is blanked, and `RandomPlanetLanding.tsx` renders instead of
+`SolarView`. That component owns a short (~1s), self-contained landing
+beat — a green disk grows to fill the grid (reusing the same
+Euclidean-distance/`ASPECT_RATIO` approach `WarpTransition`'s star-dive
+disk uses), then the traveler figure (`WarpTransition.tsx`'s exported
+`TRAVELER_FIGURES`, so the HUMAN/LLM swap works identically here) appears
+standing on it for the last two frames — before settling permanently
+into a static bordered card (matching `ContentView`'s leaf-card style)
+showing the touchdown line and civilization description. Deliberately
+lighter-weight than `WarpTransition`'s full cinematic (no HUD phase
+messages, no `onPhaseChange` plumbing) since this isn't a mode
+transition the rest of the app needs to react to — just a brief "and now
+you're standing here" beat that owns its own tiny timer.
+
+Leaving works exactly like leaving any other star — `isStarBoundary`
+doesn't know or care that you're currently looking at a random-landing
+card instead of Sgr A*'s own orbit view, so Escape/`back` still plays
+the same portal-departure sequence (see above) back out to the star map.
+Verified via tmux at both 80×30 and 100×45: the intro animation
+frame-by-frame (disk growing, traveler appearing), the settled card at
+both widths, the direct-resume safety net (fresh content each time,
+confirmed via different generated names across repeated resumes), and
+leaving correctly re-triggering the portal.
+
 ## Time — three times
 
 `SCOPE.md`'s 2026-07-30 addenda: the engine tracks three times at once,

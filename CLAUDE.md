@@ -129,10 +129,17 @@ purpose shifts or a new one is added.
   (`worldTree.ts`'s `isStarBoundary`). Self-contained frame loop, reuses
   `layout.ts`'s `polarToGrid`, no new position math. The traveler figure
   it draws depends on `playerType` (HUMAN cyan stick figure vs. LLM green
-  circuit figure) — see `SPEC.md`'s Player section. Sagittarius A*
-  crossings use a different setup cinematic instead — a door, not a
-  star dive (`portal` prop, `buildPortalSetupFrame`) — see `SPEC.md`'s
-  Star travel transition section's portal-variant subsection.
+  circuit figure) — see `SPEC.md`'s Player section; exported as
+  `TRAVELER_FIGURES` so `RandomPlanetLanding.tsx` can reuse it too.
+  Sagittarius A* crossings use a different setup cinematic instead — a
+  door, not a star dive (`portal` prop, `buildPortalSetupFrame`) — see
+  `SPEC.md`'s Star travel transition section's portal-variant subsection.
+- `src/randomSystem.ts` + `src/components/RandomPlanetLanding.tsx` — what
+  arriving at Sagittarius A* actually leads to: a wholly fictional,
+  freshly-generated star/planet/civilization every single trip, never
+  persisted — the one deliberately made-up corner of this codebase,
+  contrasted with every other `*Facts.ts` file's real curated data. See
+  `SPEC.md`'s Random landing section.
 - `src/components/Console.tsx` — the Half-Life-style drop-down console
   (`~` to open, Escape/`close`/`exit` to close, both animated slides).
   Occupies the same top-tile slot as `SolarView`/`ContentView`/
@@ -564,6 +571,33 @@ both 80×30 and 100×45, frame-by-frame (0.2s-spaced captures matching
 renders as designed with no border corruption, for both directions and
 both `playerType`s (HUMAN/LLM figure swap works identically to the star
 sequence, same `TRAVELER_FIGURES` lookup).
+
+Also added this session, from a captured vision addendum (`SCOPE.md`'s
+2026-08-05 entry): what actually happens when you go through Sagittarius
+A*. Before this, arriving there just showed its own Surface/Notes hub
+like any other star; now `App.tsx`'s `completeTransition` generates a
+wholly fictional star/planet/civilization (new `randomSystem.ts`'s
+`generateRandomLanding()` — small curated word banks, mad-libbed
+together) on every single arrival — confirmed directly with the user
+that this should be **fresh every time**, not a stable seeded-once
+destination, so nothing about it is persisted to `session.ts`. A new
+`RandomPlanetLanding.tsx` replaces the normal star view while it's
+active (`App.tsx`'s `showingRandomLanding`): a short, self-contained
+landing beat (a disk grows to fill the grid, the traveler figure —
+reusing `WarpTransition.tsx`'s now-exported `TRAVELER_FIGURES` — appears
+standing on it) settles into a static description card. `children` gets
+filtered down to just the "travel back out" self-entry while showing
+it, since this isn't a spatial grid to explore. Leaving still plays the
+normal portal-departure sequence — `isStarBoundary` doesn't need to
+know or care what's currently being displayed. One real edge case
+found and fixed: resuming a session saved mid-visit would otherwise
+show a blank screen (`path` persists, but `randomLanding` deliberately
+doesn't) — a safety-net effect just generates a fresh one immediately
+on resume, which if anything is more honest to "fresh every time" than
+any alternative. Verified via tmux at both 80×30 and 100×45: the intro
+animation frame-by-frame, the settled card, repeated direct-resumes each
+producing genuinely different generated content, and leaving correctly
+re-triggering the portal.
 
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,

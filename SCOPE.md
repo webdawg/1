@@ -227,3 +227,15 @@ i want to add a black hole to the galaxy - it can just be a black blob - lets do
 CNN
 
 Since gravitational time dilation scales with mass (and how close you get to the event horizon), Sagittarius A* is the strongest "time warp" source anywhere in the galaxy. If you got close to its event horizon — without being torn apart by tidal forces first, which is a real problem — your clock would tick dramatically slower than one back on Earth. In principle, someone could hover near the edge, experience what feels like a few years, and return to find decades or centuries had passed back home. This is essentially the Interstellar scenario, just scaled up to Sagittarius A*'s size.
+
+### 2026-08-05 — What's through Sagittarius A*
+
+**Edited for readability:**
+
+When we go through Sagittarius A*, we go to a new, randomly generated
+solar system, with infinite randomness. There's an animation where we
+land on the planet that the major civilization lives on.
+
+**Verbatim:**
+
+when we go through sagittarius A* we go to a new randomly generated solar system with infinite randomness - there is an animation that we land on the planet that the major civilization lives on

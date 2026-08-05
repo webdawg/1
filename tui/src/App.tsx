@@ -5,6 +5,8 @@ import ContentView from "./components/ContentView.js";
 import Prompt from "./components/Prompt.js";
 import Console from "./components/Console.js";
 import WarpTransition, { type TransitionPhase } from "./components/WarpTransition.js";
+import RandomPlanetLanding from "./components/RandomPlanetLanding.js";
+import { generateRandomLanding, type RandomLanding } from "./randomSystem.js";
 import {
   applyZoom,
   computeAutoZoomLevel,
@@ -139,6 +141,10 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
 
   const [path, setPath] = useState<string[]>(session.path);
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  // What's currently generated at Sagittarius A* — regenerated fresh on
+  // every arrival, never persisted (see randomSystem.ts). null whenever
+  // we're not there.
+  const [randomLanding, setRandomLanding] = useState<RandomLanding | null>(null);
   const [zoomLevel, setZoomLevel] = useState(0);
   const [transition, setTransition] = useState<{
     nextPath: string[];
@@ -221,6 +227,14 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
       setPath(current.nextPath);
       persist(current.nextPath);
       pushLog(current.logLine);
+      // A fresh roll every single arrival, per explicit choice over a
+      // stable, revisitable destination — see randomSystem.ts. Arriving
+      // anywhere else doesn't touch this; it's only ever read when
+      // centerId is actually "sagittarius-a-star" (see the render below),
+      // so a stale value elsewhere is harmless.
+      if (current.nextPath[current.nextPath.length - 1] === "sagittarius-a-star") {
+        setRandomLanding(generateRandomLanding());
+      }
       return null;
     });
   }
@@ -255,15 +269,31 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   const centerLabel = getCenterLabel(centerId);
   const centerKind = getNodeKind(centerId);
   const isLeaf = centerKind === "surface" || centerKind === "orbit-log" || centerKind === "rings" || centerKind === "notes";
+  // True once we've landed on a freshly-generated planet at Sagittarius
+  // A* (see completeTransition) — overrides the normal star view with
+  // RandomPlanetLanding instead of the usual orbit-entry grid.
+  const showingRandomLanding = centerId === "sagittarius-a-star" && randomLanding !== null;
   const domain = useMemo(() => getDistanceDomain(centerId), [centerId]);
-  const children = useMemo(
-    () => [...getOrbitChildren(centerId, now)].sort((a, b) => a.angleDeg - b.angleDeg),
-    [centerId, now]
-  );
+  const children = useMemo(() => {
+    if (showingRandomLanding) {
+      // Only the "travel back out" self-entry — this screen isn't a
+      // spatial grid to explore, just Enter/Escape to leave.
+      return getOrbitChildren(centerId, now).filter((c) => c.id === STARMAP_ID);
+    }
+    return [...getOrbitChildren(centerId, now)].sort((a, b) => a.angleDeg - b.angleDeg);
+  }, [centerId, now, showingRandomLanding]);
 
   useEffect(() => {
     setFocusedId((prev) => (prev && children.some((c) => c.id === prev) ? prev : (children[0]?.id ?? null)));
   }, [children]);
+
+  // Safety net for resuming a session saved mid-visit: randomLanding is
+  // deliberately not persisted (see its own state comment), so a fresh
+  // process start would otherwise show a blank/stale screen here instead
+  // of regenerating — this makes "fresh every time" hold even then.
+  useEffect(() => {
+    if (centerId === "sagittarius-a-star" && !randomLanding) setRandomLanding(generateRandomLanding());
+  }, [centerId, randomLanding]);
 
   // Zoom is a property of the current view, not something that should
   // follow you to a different one — land already spread out as far as a
@@ -554,6 +584,8 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
                 onPhaseChange={setTransitionPhase}
                 onComplete={completeTransition}
               />
+            ) : showingRandomLanding ? (
+              <RandomPlanetLanding landing={randomLanding} playerType={playerType} gridWidth={gridWidth} gridHeight={gridHeight} />
             ) : isLeaf ? (
               <ContentView nodeId={centerId} date={now} notes={sessionRef.current.notes[centerId] ?? []} />
             ) : (
@@ -568,7 +600,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
             )}
             <Box justifyContent="center">
               <Text dimColor={!focused}>
-                {transition
+                {transition || showingRandomLanding
                   ? ""
                   : focused
                     ? `${getCategoryLabel(focused.id)} - ${focused.label} — ${toClockHour(focused.angleDeg)} o'clock, ${focused.distance.toFixed(2)}${getDistanceUnitLabel(centerId)}`
