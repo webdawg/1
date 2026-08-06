@@ -1,8 +1,9 @@
-# Scope
+# Starsystem — Scope
 
-This is the founding vision statement for the project — where the `tui/`
-solar-system engine is headed long-term, beyond what's currently built. Not
-a spec or a commitment to build all of this; a record of the idea so later
+This is the founding vision statement for the project — **Starsystem**,
+named in the 2026-08-06 addendum below — where the `tui/` solar-system
+engine is headed long-term, beyond what's currently built. Not a spec or
+a commitment to build all of this; a record of the idea so later
 decisions can be checked against it.
 
 ## Vision (lightly edited for readability)
@@ -252,3 +253,18 @@ system.
 **Verbatim:**
 
 so this is perfect, but we need to be able to exit where we have touched down - see the entire randomly generated solar system, explore it, and then go back to Sagittarius A* and go to another completly random system
+
+### 2026-08-06 — Naming the project, and a quote
+
+**Edited for readability:**
+
+There are infinite connections between stars. Let's call this entire
+project Starsystem.
+
+And: when you perform tensor-like calculations using the particle
+accelerator sun, you get strange results. (This is a hardcoded quote —
+save it in documentation.)
+
+**Verbatim:**
+
+their are infinite connections between stars, lets call this entire project starsystem, and when you perform tensor like calculations using the particial accelerator sun you get strange results - this is a hardcoded quote save in documentation, and lets update the entire spec to reflect this.

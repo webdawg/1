@@ -1,4 +1,4 @@
-# Development Environment
+# Starsystem — Development Environment
 
 What's needed to develop and run this repo, and what's just notes from
 getting it working. See `CLAUDE.md` for code structure, `SCOPE.md`/

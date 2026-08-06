@@ -10,6 +10,17 @@ export const STARMAP_FACTS = {
 // excluded from that record (see below). Used by relativity.ts's
 // gravitational time dilation, same real-physics treatment as everywhere
 // else in this codebase.
+//
+// A hardcoded quote, entered verbatim per direct instruction (typos and
+// all — see SCOPE.md's 2026-08-06 addendum for the full capture). Lore,
+// not a spec item: nothing below performs anything resembling "tensor
+// like calculations" on the Sun, and nothing should be built to make
+// this sentence literally true.
+//   "their are infinite connections between stars, lets call this
+//    entire project starsystem, and when you perform tensor like
+//    calculations using the particial accelerator sun you get strange
+//    results - this is a hardcoded quote save in documentation, and
+//    lets update the entire spec to reflect this."
 export const SUN_GRAVITY = 274; // m/s², surface
 export const SUN_DIAMETER_KM = 1_392_000;
 

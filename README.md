@@ -1,9 +1,12 @@
-# 1
+# Starsystem
 
 A text-based solar system engine, built as an Ink (React-for-terminals) TUI.
 Navigate from the Sun out through the planets, their major moons, the
-asteroid belt, and (in progress) comets, using real orbital mechanics for
-planet positions.
+asteroid belt, and comets, using real orbital mechanics for planet
+positions — and out further still, through a curated star map of real
+nearby stars to Sagittarius A* itself, the real supermassive black hole
+at the galaxy's center, and beyond it into infinite, freshly generated
+connections to other worlds.
 
 ## Running
 

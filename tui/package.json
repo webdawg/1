@@ -1,7 +1,7 @@
 {
-  "name": "tui",
+  "name": "starsystem",
   "version": "1.0.0",
-  "description": "Text-based solar system engine (Ink TUI)",
+  "description": "Starsystem — a text-based solar system engine (Ink TUI)",
   "main": "src/index.tsx",
   "scripts": {
     "start": "tsx src/index.tsx",

@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+This project's name is **Starsystem**, per `SCOPE.md`'s 2026-08-06
+addendum.
+
 See `SCOPE.md` for the founding vision statement — the long-term idea behind
 this project, well beyond what's currently built. Not a spec, just the
 north star for judging where features should eventually head. See
@@ -39,7 +42,7 @@ being asked each time:
 
 This repo actually contains two unrelated things:
 
-1. **`tui/`** — the real, active project. An Ink (React-for-terminals) app that
+1. **`tui/`** — the real, active project: **Starsystem**. An Ink (React-for-terminals) app that
    models the universe as a recursive "center + orbiting things" tree you
    navigate: star map → Sol → planets → moons, Sol → asteroid belt →
    asteroids, Sol → comets hub → comets; star map → any other real star →
@@ -635,6 +638,25 @@ back out to the system view → visit a different non-civilization planet
 reachable → leave → re-enter → confirm a genuinely different system),
 plus both resume-safety-net cases (at the hub, and on a deliberately
 stale planet path).
+
+Also this session: the project got an actual name, **Starsystem**, per
+`SCOPE.md`'s 2026-08-06 addendum (previously unnamed everywhere — the
+README's title was just "# 1," `tui/package.json`'s name was the
+generic "tui"). Applied to `README.md`, `tui/package.json`, and the
+title/opening line of every doc in the stack (`SPEC.md`, `SCOPE.md`,
+`ROADMAP.md`, `DEVELOPMENT.md`, this file) for consistency, plus
+verified `npm start`/`npm run typecheck` still work fine post-rename.
+The same addendum's second half — "infinite connections between
+stars," and a genuinely inscrutable quote about "tensor-like
+calculations using the particle accelerator sun" — was handled per the
+user's own explicit framing: the quote is preserved verbatim as a
+blockquote near the top of `SPEC.md`, explicitly labeled as lore rather
+than a spec item (nothing was built to make "tensor-like calculations"
+literally true), while "infinite connections between stars" got a real
+line in `SPEC.md`'s World model tying it to something already
+true today — the star map's graph has no fixed edge count, and
+Sagittarius A* alone already connects to a genuinely unbounded space of
+generated destinations.
 
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,

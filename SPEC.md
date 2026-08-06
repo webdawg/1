@@ -1,10 +1,26 @@
-# Spec
+# Starsystem — Spec
 
-Technical specification of how the `tui/` engine actually works right now —
-the concrete *how*, as opposed to `SCOPE.md` (the *why*, founding vision) or
-`ROADMAP.md` (the *what's next*, phased plan). This is a snapshot of the
-current design; update it as the design changes, and if the code and this
-file ever disagree, the code is authoritative until this file catches up.
+Technical specification of how the `tui/` engine — this project's name is
+**Starsystem**, per `SCOPE.md`'s 2026-08-06 addendum — actually works
+right now. The concrete *how*, as opposed to `SCOPE.md` (the *why*,
+founding vision) or `ROADMAP.md` (the *what's next*, phased plan). This is
+a snapshot of the current design; update it as the design changes, and if
+the code and this file ever disagree, the code is authoritative until this
+file catches up.
+
+> "There are infinite connections between stars." — and, less
+> explicably: "when you perform tensor-like calculations using the
+> particle accelerator sun, you get strange results." Both are quoted
+> verbatim from `SCOPE.md`'s 2026-08-06 addendum, preserved here
+> deliberately as lore, not as a spec item — nothing in this codebase
+> performs "tensor-like calculations" on the Sun, and nothing should be
+> built to make that sentence literally true. The first half *is*
+> reflected below: the star map's real connections (every curated star,
+> plus Sagittarius A*) already form a graph with no fixed edge count,
+> and Sagittarius A* alone connects to a genuinely unbounded space of
+> destinations — a fresh, never-repeating system on every single crossing
+> (see Random landing below). "Infinite connections between stars" is
+> true of this engine today, not just aspirationally.
 
 ## World model
 
@@ -14,7 +30,9 @@ plus ~16 real nearby stars, plus Sagittarius A* — see below) → for Sol:
 `planet` → `moon`; `sun` → `belt` → `asteroid`; `sun` → `comets` (hub) →
 `comet`; for every other star: `exoplanet`. Any of those → leaf nodes
 (`surface`, `orbit-log`, `rings` — only on ringed planets, `notes`).
-Leaves are generic detail screens, not physical bodies.
+Leaves are generic detail screens, not physical bodies. Sagittarius A*
+specifically is a connection to an unbounded space of further systems,
+not a fixed leaf of this tree — see Random landing below.
 
 Position math, by category:
 - **Planets** — real orbital elements + Kepler's equation (Newton's

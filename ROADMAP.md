@@ -1,4 +1,4 @@
-# Roadmap
+# Starsystem — Roadmap
 
 Phased plan derived from `SCOPE.md`. `SCOPE.md` is the *why* and doesn't
 change; this file is the *what's next* and should. Review it at the start
