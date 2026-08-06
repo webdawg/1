@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import type { PlayerType } from "../session.js";
-import type { RandomLanding } from "../randomSystem.js";
+import type { RandomPlanet } from "../randomSystem.js";
 import { TRAVELER_FIGURES } from "./WarpTransition.js";
 
 interface Props {
-  landing: RandomLanding;
+  planet: RandomPlanet;
   playerType: PlayerType;
   gridWidth: number;
   gridHeight: number;
+  /** True only for the very first arrival on the civilization's home planet — every other visit (revisiting it, or any other planet in the system) jumps straight to the settled card. */
+  animate: boolean;
+  /** Fired once, when the intro animation finishes — never fired at all when animate is false. */
+  onAnimationDone: () => void;
 }
 
 interface Cell {
@@ -18,10 +22,10 @@ interface Cell {
 }
 
 const FRAME_MS = 220;
-// A short, self-contained landing beat (~1s) played once on arrival, then
-// settles into the static description card below — deliberately lighter
-// weight than WarpTransition's full cinematic, since this isn't a mode
-// transition, just a brief "and now you're standing here" moment.
+// A short, self-contained landing beat (~1s) played once on first arrival,
+// then settles into the static description card below — deliberately
+// lighter weight than WarpTransition's full cinematic, since this isn't a
+// mode transition, just a brief "and now you're standing here" moment.
 const INTRO_STEPS = 5;
 // Mirrors layout.ts's private ASPECT_RATIO so the disk reads round, not
 // squashed, on the taller-than-wide terminal cell grid.
@@ -85,19 +89,34 @@ function GridRow({ row }: { row: Cell[] }): React.JSX.Element {
   );
 }
 
-/** What Sagittarius A* leads to, per direct request ("we land on the planet the major civilization lives on") — a brief landing beat, then a fixed description card, regenerated fresh every visit. See randomSystem.ts. */
-export default function RandomPlanetLanding({ landing, playerType, gridWidth, gridHeight }: Props): React.JSX.Element {
+/**
+ * What arriving at (or exploring) Sagittarius A*'s generated system shows
+ * for a single planet — the civilization's home gets the animated
+ * touchdown exactly once (animate=true, only on that first arrival);
+ * every other planet, and every revisit, jumps straight to the settled
+ * card. App.tsx renders this with key={planet.id} so navigating between
+ * different planets gets a fresh component instance (fresh animation
+ * decision) rather than carrying stale intro-animation state over.
+ */
+export default function RandomPlanetCard({ planet, playerType, gridWidth, gridHeight, animate, onAnimationDone }: Props): React.JSX.Element {
   const [step, setStep] = useState(0);
-  const [settled, setSettled] = useState(false);
+  const [settled, setSettled] = useState(!animate);
 
   useEffect(() => {
-    if (settled) return;
+    if (!animate || settled) return;
     const id = setTimeout(() => {
-      if (step < INTRO_STEPS - 1) setStep((s) => s + 1);
-      else setSettled(true);
+      if (step < INTRO_STEPS - 1) {
+        setStep((s) => s + 1);
+      } else {
+        setSettled(true);
+        onAnimationDone();
+      }
     }, FRAME_MS);
     return () => clearTimeout(id);
-  }, [step, settled]);
+    // onAnimationDone is only ever meant to fire once, driven by step/settled
+    // — not re-run just because the parent passed a new function identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, settled, animate]);
 
   if (!settled) {
     const grid = buildIntroFrame(step, playerType, gridWidth, gridHeight);
@@ -112,11 +131,9 @@ export default function RandomPlanetLanding({ landing, playerType, gridWidth, gr
 
   return (
     <Box flexDirection="column" borderStyle="round" paddingX={1}>
-      <Text italic>
-        Touchdown on {landing.planetName}, orbiting {landing.starName}.
-      </Text>
+      <Text italic>{planet.civilizationName ? `Touchdown on ${planet.name}.` : `You are standing on ${planet.name}.`}</Text>
       <Text> </Text>
-      <Text>{landing.description}</Text>
+      <Text>{planet.description}</Text>
     </Box>
   );
 }

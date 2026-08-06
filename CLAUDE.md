@@ -134,12 +134,13 @@ purpose shifts or a new one is added.
   Sagittarius A* crossings use a different setup cinematic instead — a
   door, not a star dive (`portal` prop, `buildPortalSetupFrame`) — see
   `SPEC.md`'s Star travel transition section's portal-variant subsection.
-- `src/randomSystem.ts` + `src/components/RandomPlanetLanding.tsx` — what
+- `src/randomSystem.ts` + `src/components/RandomPlanetCard.tsx` — what
   arriving at Sagittarius A* actually leads to: a wholly fictional,
-  freshly-generated star/planet/civilization every single trip, never
-  persisted — the one deliberately made-up corner of this codebase,
-  contrasted with every other `*Facts.ts` file's real curated data. See
-  `SPEC.md`'s Random landing section.
+  freshly-generated star system (a handful of planets, one home to a
+  randomly generated civilization) every single trip, fully explorable
+  and never persisted — the one deliberately made-up corner of this
+  codebase, contrasted with every other `*Facts.ts` file's real curated
+  data. See `SPEC.md`'s Random landing section.
 - `src/components/Console.tsx` — the Half-Life-style drop-down console
   (`~` to open, Escape/`close`/`exit` to close, both animated slides).
   Occupies the same top-tile slot as `SolarView`/`ContentView`/
@@ -598,6 +599,42 @@ any alternative. Verified via tmux at both 80×30 and 100×45: the intro
 animation frame-by-frame, the settled card, repeated direct-resumes each
 producing genuinely different generated content, and leaving correctly
 re-triggering the portal.
+
+Also expanded this session, from a captured follow-up addendum
+(`SCOPE.md`'s same-day entry, "explore the whole random system"): the
+single-planet dead end above became a fully explorable generated
+system. `randomSystem.ts`'s `generateRandomLanding()` became
+`generateRandomSystem()` — 3–6 `RandomPlanet`s per roll, evenly spread
+by angle with jitter, exactly one flagged as the civilization's home;
+the rest get plain flavor text from a separate pool, deliberately
+without fabricated stats (no diameter/gravity made up for fictional
+worlds). `completeTransition` now auto-extends the path one level
+further onto the civilization planet's id on arrival, so you land
+already standing on the world that matters, with the rest of the system
+reachable by backing out. While centered on `sagittarius-a-star` with a
+system generated, `App.tsx` overrides `children`/`domain` (worldTree.ts
+doesn't know about generated planets) to show the usual "travel back
+out" self-entry, Sgr A*'s own *real* Surface/Notes leaves (unchanged —
+preserved deliberately, not just the fictional content), and every
+generated planet as an ordinary selectable entry — moving between them
+is instant, since `isStarBoundary` only fires on the actual star-map
+crossing, never on this inner navigation. `RandomPlanetCard.tsx`
+(renamed from `RandomPlanetLanding.tsx`) now takes an `animate` prop:
+the civilization planet's landing beat plays once, on first arrival
+only (gated on a new `hasPlayedLanding` flag, reset whenever a fresh
+system generates); every other planet, and every revisit, shows the
+settled card immediately — rendered with `key={planet.id}` so switching
+planets gets a fresh component instance rather than carrying stale
+animation state over. The resume safety net grew a second case: a
+stale three-levels-deep path pointing at a specific generated planet
+can't possibly match a freshly-rolled system's ids, so it falls back to
+the system hub instead of pointing at nothing. Verified via tmux at
+both 80×30 and 100×45: the full loop (portal in → animated touchdown →
+back out to the system view → visit a different non-civilization planet
+→ back to the hub → confirm Sgr A*'s real Surface facts are still
+reachable → leave → re-enter → confirm a genuinely different system),
+plus both resume-safety-net cases (at the hub, and on a deliberately
+stale planet path).
 
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,

@@ -239,3 +239,16 @@ land on the planet that the major civilization lives on.
 **Verbatim:**
 
 when we go through sagittarius A* we go to a new randomly generated solar system with infinite randomness - there is an animation that we land on the planet that the major civilization lives on
+
+### 2026-08-05 — Explore the whole random system
+
+**Edited for readability:**
+
+This is perfect, but we need to be able to exit where we've touched
+down — see the entire randomly generated solar system, explore it —
+and then go back to Sagittarius A* and go to another completely random
+system.
+
+**Verbatim:**
+
+so this is perfect, but we need to be able to exit where we have touched down - see the entire randomly generated solar system, explore it, and then go back to Sagittarius A* and go to another completly random system

@@ -482,64 +482,96 @@ does for the star sequence, since both call the same
 
 ## Random landing — what's through Sagittarius A*
 
-Per `SCOPE.md`'s 2026-08-05 addendum: arriving at Sagittarius A* doesn't
-land on a real destination the way every other star does — it generates
-a brand-new, wholly fictional star/planet/civilization and lands you
-directly on the planet's surface, with its own brief landing animation.
-**Fresh every single trip** — an explicit choice, confirmed directly
-with the user over the alternative (a stable, seeded-once, revisitable
-destination): nothing generated here is persisted anywhere, and you can
-never return to the same alien world twice. This is the one deliberately
-fictional corner of the engine — everywhere else (planets, moons, real
-stars, curated exoplanets, Sgr A* itself) is real, curated data;
-`randomSystem.ts`'s own file comment makes this contrast explicit so it
-doesn't get mistaken for another curated `*Facts.ts` file later.
+Per `SCOPE.md`'s 2026-08-05 addendum (and a same-day follow-up): arriving
+at Sagittarius A* doesn't land on a real destination the way every other
+star does — it generates a brand-new, wholly fictional star system (a
+handful of planets, one of them home to a randomly generated
+civilization) and lands you directly on that civilization's planet, with
+its own brief landing animation. From there you can back out to see and
+explore the rest of the generated system, then leave through Sagittarius
+A* again to roll an entirely new one. **Fresh every single trip** — an
+explicit choice, confirmed directly with the user over the alternative
+(a stable, seeded-once, revisitable destination): nothing generated here
+is persisted anywhere, and you can never return to the same generated
+system twice. This is the one deliberately fictional corner of the
+engine — everywhere else (planets, moons, real stars, curated
+exoplanets, Sgr A* itself) is real, curated data; `randomSystem.ts`'s
+own file comment makes this contrast explicit so it doesn't get mistaken
+for another curated `*Facts.ts` file later. Fictional planets
+deliberately carry no fabricated stats (diameter, gravity, ...) the way
+real bodies do — just a name and a line of flavor text — so as not to
+blur the line between real and made-up data elsewhere in this codebase.
 
-`randomSystem.ts`'s `generateRandomLanding()` (pure, no React) mad-libs
-a `RandomLanding` — star name, planet name, civilization name, and a
-one-line description — from small curated word banks (name
-prefixes/suffixes, civilization adjectives/nouns, a pool of civilization
-traits), each call a fresh `Math.random()` roll. `App.tsx`'s
-`completeTransition` calls it exactly once, only on arrival (checking
-`current.nextPath`'s last segment is `"sagittarius-a-star"` — leaving
-doesn't touch it), storing the result in `randomLanding` state — deliberately
-*not* added to `session.ts`'s persisted `SessionData`, matching "not
-persisted anywhere." A safety-net effect covers the one edge case that
-would otherwise show a blank/stale screen: resuming a session saved
-mid-visit (`path` itself *is* persisted, so `centerId` can be
-`"sagittarius-a-star"` on a fresh process start with no `randomLanding`
-in memory yet) — it just generates a new one immediately, which is
-arguably even more honest to "fresh every time" than reusing whatever
-was there before you quit.
+**Generation** (`randomSystem.ts`'s `generateRandomSystem()`, pure, no
+React): mad-libs a `RandomSystem` — a star name, 3–6 `RandomPlanet`s
+(name, glyph, an AU-like display distance and angle spread evenly around
+the circle with jitter, same spirit as the real star map's hand-placed
+angles), and exactly one of them flagged as the civilization's home
+(its own name plus one of ten curated trait lines, e.g. "who trade in
+memories instead of currency"). The other planets each get a plain
+flavor line from a separate small pool (no civilization). Every call is
+a fresh set of `Math.random()` rolls — nothing seeded or reproducible.
 
-While `randomLanding` is set and `centerId` is `sagittarius-a-star`
-(`App.tsx`'s `showingRandomLanding`), the normal star view is replaced
-entirely: `children` is filtered down to just the "travel back out"
-self-entry (this isn't a spatial grid with orbit entries to explore —
-Enter only ever means "go back," same as Escape), the focused-entry
-footer is blanked, and `RandomPlanetLanding.tsx` renders instead of
-`SolarView`. That component owns a short (~1s), self-contained landing
+**Arrival** (`App.tsx`'s `completeTransition`): on arrival specifically
+(checking `current.nextPath`'s last segment is `"sagittarius-a-star"` —
+leaving doesn't touch it) generates a system, stores it in `randomSystem`
+state, resets `hasPlayedLanding` to `false`, and — instead of just
+landing on the hub — immediately extends the path one level further onto
+the civilization planet's id, so you land *in* the system already
+standing on the world that matters. Neither `randomSystem` nor
+`hasPlayedLanding` is added to `session.ts`'s persisted `SessionData`,
+matching "not persisted anywhere." A safety-net effect covers resuming a
+session saved mid-visit (`path` itself *is* persisted): if `centerId` is
+the hub or a generated-planet id with no `randomSystem` in memory, it
+generates a fresh one immediately: at the hub, that's it; three levels
+deep, the *specific* planet id from the discarded system can't possibly
+match the fresh roll's ids, so it falls back to the hub instead of
+pointing at a planet nothing generated. `hasPlayedLanding` is forced
+`true` in this path — a resume shouldn't replay the animation.
+
+**Exploring the system**: while centered on `"sagittarius-a-star"` with a
+`randomSystem` set, `App.tsx` overrides both `children` and `domain`
+(worldTree.ts's real, curated-exoplanet-based versions don't know about
+generated planets) — `children` becomes the usual "travel back out"
+self-entry, Sgr A*'s own *real* Surface/Notes leaves (unchanged — still
+the genuine curated black-hole facts, just no longer the only thing
+here), and every generated planet as an ordinary selectable orbit entry.
+Moving between the hub and any planet is instant, exactly like moving
+between Sol and a real planet — `isStarBoundary` only fires on the
+star-map ↔ star crossing itself, never on this inner navigation, so the
+portal sequence never replays just from browsing the system. The
+breadcrumb resolves generated-planet ids to their names via a small
+wrapper around `getBreadcrumbLabel` (checking `randomSystem.planets`
+first) rather than teaching `worldTree.ts` about fictional ids.
+
+**Standing on a planet** (`RandomPlanetCard.tsx`, rendered whenever
+`centerId` matches one of `randomSystem.planets`, `key`ed by planet id so
+navigating to a different planet gets a fresh component instance): the
+civilization planet, on its first-ever landing only (`animate` prop,
+gated on `!hasPlayedLanding`), plays a short (~1s) self-contained landing
 beat — a green disk grows to fill the grid (reusing the same
 Euclidean-distance/`ASPECT_RATIO` approach `WarpTransition`'s star-dive
 disk uses), then the traveler figure (`WarpTransition.tsx`'s exported
 `TRAVELER_FIGURES`, so the HUMAN/LLM swap works identically here) appears
-standing on it for the last two frames — before settling permanently
-into a static bordered card (matching `ContentView`'s leaf-card style)
-showing the touchdown line and civilization description. Deliberately
+standing on it — before settling into a static bordered card (matching
+`ContentView`'s leaf-card style) with the touchdown line and description.
+Every other planet, and every revisit to the civilization planet within
+the same system-visit, skips straight to the settled card — the intro is
+a first-arrival flourish, not a per-visit one. Deliberately
 lighter-weight than `WarpTransition`'s full cinematic (no HUD phase
-messages, no `onPhaseChange` plumbing) since this isn't a mode
-transition the rest of the app needs to react to — just a brief "and now
-you're standing here" beat that owns its own tiny timer.
+messages, no `onPhaseChange` plumbing) since this isn't a mode transition
+the rest of the app needs to react to.
 
-Leaving works exactly like leaving any other star — `isStarBoundary`
-doesn't know or care that you're currently looking at a random-landing
-card instead of Sgr A*'s own orbit view, so Escape/`back` still plays
-the same portal-departure sequence (see above) back out to the star map.
-Verified via tmux at both 80×30 and 100×45: the intro animation
-frame-by-frame (disk growing, traveler appearing), the settled card at
-both widths, the direct-resume safety net (fresh content each time,
-confirmed via different generated names across repeated resumes), and
-leaving correctly re-triggering the portal.
+**Leaving** works exactly like leaving any other star — `isStarBoundary`
+doesn't know or care what's currently on screen inside the system, so
+Escape/`back` from the hub still plays the same portal-departure sequence
+(see above) back out to the star map, and going back in rolls an entirely
+new system from scratch. Verified via tmux at both 80×30 and 100×45: the
+full loop (portal in → animated touchdown → back out to the system view →
+visit a different, non-civilization planet → back to the hub → confirm
+Sgr A*'s own real Surface facts are still reachable → leave → re-enter →
+confirm a genuinely different system), plus the direct-resume safety net
+at both the hub and a (deliberately stale) three-levels-deep path.
 
 ## Time — three times
 

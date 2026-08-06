@@ -5,8 +5,8 @@ import ContentView from "./components/ContentView.js";
 import Prompt from "./components/Prompt.js";
 import Console from "./components/Console.js";
 import WarpTransition, { type TransitionPhase } from "./components/WarpTransition.js";
-import RandomPlanetLanding from "./components/RandomPlanetLanding.js";
-import { generateRandomLanding, type RandomLanding } from "./randomSystem.js";
+import RandomPlanetCard from "./components/RandomPlanetCard.js";
+import { generateRandomSystem, type RandomSystem } from "./randomSystem.js";
 import {
   applyZoom,
   computeAutoZoomLevel,
@@ -30,6 +30,7 @@ import {
   getStarDistanceLy,
   isStarBoundary,
   parseLeafId,
+  type OrbitEntry,
 } from "./worldTree.js";
 import { isStarId, STARMAP_ID } from "./starFacts.js";
 import { loadSession, saveSession, type PlayerType, type SessionData } from "./session.js";
@@ -144,7 +145,12 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   // What's currently generated at Sagittarius A* — regenerated fresh on
   // every arrival, never persisted (see randomSystem.ts). null whenever
   // we're not there.
-  const [randomLanding, setRandomLanding] = useState<RandomLanding | null>(null);
+  const [randomSystem, setRandomSystem] = useState<RandomSystem | null>(null);
+  // Whether the civilization planet's animated touchdown has already
+  // played for the current randomSystem — true after the first landing,
+  // or immediately for any other planet/revisit, so the animation is
+  // never replayed within the same system-visit.
+  const [hasPlayedLanding, setHasPlayedLanding] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(0);
   const [transition, setTransition] = useState<{
     nextPath: string[];
@@ -224,17 +230,24 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
   function completeTransition() {
     setTransition((current) => {
       if (!current) return current;
-      setPath(current.nextPath);
-      persist(current.nextPath);
-      pushLog(current.logLine);
       // A fresh roll every single arrival, per explicit choice over a
       // stable, revisitable destination — see randomSystem.ts. Arriving
       // anywhere else doesn't touch this; it's only ever read when
-      // centerId is actually "sagittarius-a-star" (see the render below),
-      // so a stale value elsewhere is harmless.
+      // centerId is "sagittarius-a-star" or one of its generated planets
+      // (see the render below), so a stale value elsewhere is harmless.
+      // Lands directly on the civilization's planet — its own animated
+      // touchdown — with the rest of the freshly generated system
+      // reachable by backing out to Sagittarius A* itself from there.
+      let finalPath = current.nextPath;
       if (current.nextPath[current.nextPath.length - 1] === "sagittarius-a-star") {
-        setRandomLanding(generateRandomLanding());
+        const system = generateRandomSystem();
+        setRandomSystem(system);
+        setHasPlayedLanding(false);
+        finalPath = [...current.nextPath, system.civilizationPlanetId];
       }
+      setPath(finalPath);
+      persist(finalPath);
+      pushLog(current.logLine);
       return null;
     });
   }
@@ -266,34 +279,77 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
     dilationInputs.starGravity !== null && dilationInputs.starRadiusM !== null && dilationInputs.distanceFromStarM !== null
       ? orbitalVelocityAtDistance(dilationInputs.starGravity, dilationInputs.starRadiusM, dilationInputs.distanceFromStarM)
       : null;
-  const centerLabel = getCenterLabel(centerId);
+  // The generated planet we're currently standing on, if any — null for
+  // everywhere else, including the system hub itself (Sagittarius A*'s
+  // own id, not one of its generated planets).
+  const randomPlanet = randomSystem?.planets.find((p) => p.id === centerId) ?? null;
+  const centerLabel = randomPlanet ? randomPlanet.name : getCenterLabel(centerId);
   const centerKind = getNodeKind(centerId);
   const isLeaf = centerKind === "surface" || centerKind === "orbit-log" || centerKind === "rings" || centerKind === "notes";
-  // True once we've landed on a freshly-generated planet at Sagittarius
-  // A* (see completeTransition) — overrides the normal star view with
-  // RandomPlanetLanding instead of the usual orbit-entry grid.
-  const showingRandomLanding = centerId === "sagittarius-a-star" && randomLanding !== null;
-  const domain = useMemo(() => getDistanceDomain(centerId), [centerId]);
+  const domain = useMemo(() => {
+    if (centerId === "sagittarius-a-star" && randomSystem) {
+      // Overrides worldTree.ts's real (curated-exoplanet-based) domain
+      // with one that actually fits the generated planets' distances.
+      const distances = randomSystem.planets.map((p) => p.distance);
+      return { min: 1, max: Math.max(...distances) + 0.5 };
+    }
+    return getDistanceDomain(centerId);
+  }, [centerId, randomSystem]);
   const children = useMemo(() => {
-    if (showingRandomLanding) {
-      // Only the "travel back out" self-entry — this screen isn't a
-      // spatial grid to explore, just Enter/Escape to leave.
-      return getOrbitChildren(centerId, now).filter((c) => c.id === STARMAP_ID);
+    if (centerId === "sagittarius-a-star" && randomSystem) {
+      // The generated system's own view: the usual "travel back out"
+      // self-entry, Sgr A*'s own real Surface/Notes leaves (unchanged —
+      // still the real curated black-hole facts, just no longer the
+      // *only* thing here), and every generated planet.
+      const selfEntry: OrbitEntry = {
+        id: STARMAP_ID,
+        label: "Sagittarius A*",
+        glyph: getCenterGlyph("sagittarius-a-star"),
+        angleDeg: 0,
+        distance: 0,
+      };
+      const surfaceLeaf: OrbitEntry = { id: "sagittarius-a-star:surface", label: "Surface", glyph: "»", angleDeg: 0, distance: 1 };
+      const notesLeaf: OrbitEntry = { id: "sagittarius-a-star:notes", label: "Notes", glyph: "»", angleDeg: 180, distance: 2 };
+      const planetEntries: OrbitEntry[] = randomSystem.planets.map((p) => ({
+        id: p.id,
+        label: p.name,
+        glyph: p.glyph,
+        angleDeg: p.angleDeg,
+        distance: p.distance,
+      }));
+      return [selfEntry, surfaceLeaf, notesLeaf, ...planetEntries];
     }
     return [...getOrbitChildren(centerId, now)].sort((a, b) => a.angleDeg - b.angleDeg);
-  }, [centerId, now, showingRandomLanding]);
+  }, [centerId, now, randomSystem]);
 
   useEffect(() => {
     setFocusedId((prev) => (prev && children.some((c) => c.id === prev) ? prev : (children[0]?.id ?? null)));
   }, [children]);
 
-  // Safety net for resuming a session saved mid-visit: randomLanding is
+  // Safety net for resuming a session saved mid-visit: randomSystem is
   // deliberately not persisted (see its own state comment), so a fresh
   // process start would otherwise show a blank/stale screen here instead
-  // of regenerating — this makes "fresh every time" hold even then.
+  // of regenerating. Covers both cases path can be resumed into: at the
+  // system hub itself, or three levels deep on a specific generated
+  // planet — the latter can't possibly match a freshly-rolled system's
+  // planet ids, so it falls back to the hub rather than point at a
+  // planet nothing generated.
   useEffect(() => {
-    if (centerId === "sagittarius-a-star" && !randomLanding) setRandomLanding(generateRandomLanding());
-  }, [centerId, randomLanding]);
+    const last = path[path.length - 1];
+    const parent = path[path.length - 2];
+    const atHub = last === "sagittarius-a-star";
+    const atGeneratedPlanet = parent === "sagittarius-a-star" && last.startsWith("sgr-a-planet-");
+    if ((atHub || atGeneratedPlanet) && !randomSystem) {
+      setRandomSystem(generateRandomSystem());
+      setHasPlayedLanding(true);
+      if (atGeneratedPlanet) {
+        const hubPath = path.slice(0, -1);
+        setPath(hubPath);
+        persist(hubPath);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path, randomSystem]);
 
   // Zoom is a property of the current view, not something that should
   // follow you to a different one — land already spread out as far as a
@@ -584,8 +640,16 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
                 onPhaseChange={setTransitionPhase}
                 onComplete={completeTransition}
               />
-            ) : showingRandomLanding ? (
-              <RandomPlanetLanding landing={randomLanding} playerType={playerType} gridWidth={gridWidth} gridHeight={gridHeight} />
+            ) : randomPlanet ? (
+              <RandomPlanetCard
+                key={randomPlanet.id}
+                planet={randomPlanet}
+                playerType={playerType}
+                gridWidth={gridWidth}
+                gridHeight={gridHeight}
+                animate={!hasPlayedLanding && randomPlanet.id === randomSystem?.civilizationPlanetId}
+                onAnimationDone={() => setHasPlayedLanding(true)}
+              />
             ) : isLeaf ? (
               <ContentView nodeId={centerId} date={now} notes={sessionRef.current.notes[centerId] ?? []} />
             ) : (
@@ -600,7 +664,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
             )}
             <Box justifyContent="center">
               <Text dimColor={!focused}>
-                {transition || showingRandomLanding
+                {transition || randomPlanet
                   ? ""
                   : focused
                     ? `${getCategoryLabel(focused.id)} - ${focused.label} — ${toClockHour(focused.angleDeg)} o'clock, ${focused.distance.toFixed(2)}${getDistanceUnitLabel(centerId)}`
@@ -628,7 +692,12 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
         </Box>
         <Text dimColor>
           {!transition && path.length > 1
-            ? truncateBreadcrumb(`(${path.map(getBreadcrumbLabel).join(" > ")})`, cols - 4)
+            ? truncateBreadcrumb(
+                `(${path
+                  .map((id) => randomSystem?.planets.find((p) => p.id === id)?.name ?? getBreadcrumbLabel(id))
+                  .join(" > ")})`,
+                cols - 4
+              )
             : " "}
         </Text>
         <Text dimColor>
