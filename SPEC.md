@@ -2,11 +2,13 @@
 
 Technical specification of how the `tui/` engine — this project's name is
 **Starsystem**, per `SCOPE.md`'s 2026-08-06 addendum — actually works
-right now. The concrete *how*, as opposed to `SCOPE.md` (the *why*,
-founding vision) or `ROADMAP.md` (the *what's next*, phased plan). This is
-a snapshot of the current design; update it as the design changes, and if
-the code and this file ever disagree, the code is authoritative until this
-file catches up.
+right now. The concrete *how the engine behaves*, as opposed to
+`SCOPE.md` (the *why*, founding vision), `ROADMAP.md` (the *what's
+next*, phased plan), or `CODEBOT.md` (the *how code gets written*,
+general principles for code generation rather than the engine's design).
+This is a snapshot of the current design; update it as the design
+changes, and if the code and this file ever disagree, the code is
+authoritative until this file catches up.
 
 > "There are infinite connections between stars." — and, less
 > explicably: "when you perform tensor-like calculations using the

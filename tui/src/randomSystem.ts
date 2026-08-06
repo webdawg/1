@@ -57,6 +57,7 @@ const UNINHABITED_DESCRIPTIONS = [
 const PLANET_GLYPHS = ["(o)", "(0)", "(@)", "(#)"];
 const CIVILIZATION_GLYPH = "(C)";
 
+/** One generated planet within a RandomSystem — shaped closely enough like worldTree.ts's OrbitEntry that App.tsx can build a synthetic entry from it directly. */
 export interface RandomPlanet {
   id: string;
   name: string;
@@ -64,16 +65,19 @@ export interface RandomPlanet {
   /** Arbitrary display-scale distance, same unit family as real planets' AU. */
   distance: number;
   angleDeg: number;
+  /** Non-null only on the one planet the civilization calls home. */
   civilizationName: string | null;
   description: string;
 }
 
+/** One fresh roll of generateRandomSystem() — a star name (flavor only) plus every generated planet, with civilizationPlanetId marking which one to land on first. */
 export interface RandomSystem {
   starName: string;
   planets: RandomPlanet[];
   civilizationPlanetId: string;
 }
 
+/** Picks one random element from a non-empty array. */
 function pick<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
@@ -111,3 +115,42 @@ export function generateRandomSystem(): RandomSystem {
 
   return { starName, planets, civilizationPlanetId: planets[civilizationIndex].id };
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — randomSystem.ts
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * The one deliberately fictional data source in the codebase — see the
+ * module comment at the top for the full framing. Everywhere else in
+ * this project (planetFacts.ts, starFacts.ts, ...) is real, cited data;
+ * this file mad-libs a brand-new star system from small curated word
+ * banks, on every single call, with zero persistence and zero attempt to
+ * look astronomically real.
+ *
+ * WHAT IT GENERATES
+ * generateRandomSystem() returns a RandomSystem: a flavor-only star name,
+ * 3-6 RandomPlanets (MIN_PLANETS/MAX_PLANETS) spread evenly around the
+ * circle with a little angular jitter (same spirit as the real star
+ * map's hand-placed angles), and exactly one of those planets flagged as
+ * home to a randomly-named civilization (adjective + noun, plus one of
+ * ten curated trait lines). Every other planet gets a plain flavor
+ * description from a separate pool — deliberately no fabricated stats
+ * (diameter, gravity, ...) to go with any of them, since inventing
+ * pseudo-scientific numbers for fictional worlds would blur the line
+ * this engine otherwise draws carefully between real and not-real data.
+ *
+ * WHO CONSUMES THIS
+ * App.tsx calls generateRandomSystem() exactly once per Sagittarius A*
+ * arrival (in completeTransition), stores the result in React state
+ * (never session.ts — this is explicitly not persisted), and constructs
+ * synthetic OrbitEntry objects from each RandomPlanet so the generated
+ * system can be rendered and navigated through the same SolarView/
+ * spatialNav machinery every real body uses. RandomPlanetCard.tsx renders
+ * an individual planet's card (with a one-time landing animation for the
+ * civilization's home world specifically).
+ * ============================================================================
+ */

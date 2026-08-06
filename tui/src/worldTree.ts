@@ -142,6 +142,7 @@ function meanMotionAngle(bodyId: string, date: Date, periodDays: number): number
   return ((raw % 360) + 360) % 360;
 }
 
+/** A moon's current angle (circular mean-motion) and its fixed real distance from its parent planet. */
 export function getMoonPosition(moonId: MoonId, date: Date): MoonPosition {
   const facts = MOON_FACTS[moonId];
   return {
@@ -150,6 +151,7 @@ export function getMoonPosition(moonId: MoonId, date: Date): MoonPosition {
   };
 }
 
+/** An asteroid's current angle (circular mean-motion) and its fixed real distance from the Sun. */
 export function getAsteroidPosition(asteroidId: AsteroidId, date: Date): AsteroidPosition {
   const facts = ASTEROID_FACTS[asteroidId];
   return {
@@ -158,6 +160,7 @@ export function getAsteroidPosition(asteroidId: AsteroidId, date: Date): Asteroi
   };
 }
 
+/** An exoplanet's current angle (circular mean-motion) and its fixed real distance from its star. */
 export function getExoplanetPosition(exoplanetId: ExoplanetId, date: Date): ExoplanetPosition {
   const facts = EXOPLANET_FACTS[exoplanetId];
   return {
@@ -166,10 +169,12 @@ export function getExoplanetPosition(exoplanetId: ExoplanetId, date: Date): Exop
   };
 }
 
+/** Type guard: is this id one of the 8 real planets (as opposed to a moon, asteroid, comet, exoplanet, or leaf)? */
 export function isKnownPlanet(id: string): id is PlanetName {
   return (PLANET_ORDER as readonly string[]).includes(id);
 }
 
+/** The icon a node uses both as an orbit entry and, when centered on it, as the grid's center marker. */
 export function getCenterGlyph(nodeId: string): string {
   if (nodeId === "sun") return SUN_GLYPH;
   if (isKnownPlanet(nodeId)) return PLANET_META[nodeId].glyph;
@@ -207,6 +212,7 @@ export function parseLeafId(id: string): { owner: string; kind: LeafKind } | nul
   return { owner, kind: suffix as LeafKind };
 }
 
+/** Classifies a node id into its NodeKind — drives isLeaf checks and the CATEGORY_LABELS lookup. Unrecognized non-leaf ids default to "planet" (deliberately reused by randomSystem.ts's generated planets, which never register with this file). */
 export function getNodeKind(nodeId: string): NodeKind {
   if (nodeId === "sun") return "sun";
   if (isKnownPlanet(nodeId)) return "planet";
@@ -328,6 +334,7 @@ export function getDilationInputs(nodeId: string, date: Date): DilationInputs {
   return NO_DILATION_INPUTS;
 }
 
+/** The full "Centered on X" label for a node — longer/more qualified than getBreadcrumbLabel, which assumes the parent is already shown alongside it. */
 export function getCenterLabel(nodeId: string): string {
   if (nodeId === "sun") return "Sun";
   if (isKnownPlanet(nodeId)) return PLANET_META[nodeId].label;
@@ -399,6 +406,7 @@ function leafChildren(ownerId: string): OrbitEntry[] {
   }));
 }
 
+/** The {min, max} real-distance range layout.ts's scaleDistance should spread a node's children across — App.tsx passes this straight through to computeGridPositions. */
 export function getDistanceDomain(nodeId: string): DistanceDomain {
   if (nodeId === "sun") return SUN_AU_DOMAIN;
   if (isKnownPlanet(nodeId)) {
@@ -421,6 +429,15 @@ export function getDistanceDomain(nodeId: string): DistanceDomain {
   return LEAF_DOMAIN;
 }
 
+/**
+ * The core recursive rule this whole module exists for: given whatever
+ * node the player is centered on, returns everything that orbits it as
+ * OrbitEntry objects ready for SolarView to render and spatialNav to
+ * navigate. One branch per body category (see the module comment at the
+ * top of this file for the full parent → children map); date only
+ * matters for categories with real-time-dependent positions (planets,
+ * moons, asteroids, comets, exoplanets — all mean-motion or Kepler-solved).
+ */
 export function getOrbitChildren(nodeId: string, date: Date): OrbitEntry[] {
   if (nodeId === "sun") {
     const planetEntries = getPlanetPositions(date).map((p) => ({
@@ -604,3 +621,46 @@ export function getStarDistanceLy(starId: string): number {
   if (isStarId(starId) && starId !== "sun") return STAR_FACTS[starId].distanceLy;
   return 0;
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — worldTree.ts
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * The single file that knows about every body category in the game. Its
+ * central function, getOrbitChildren(nodeId, date), is the recursive rule
+ * the whole navigation model is built on: whatever you're centered on,
+ * this tells you what orbits it. Every other function here answers a
+ * smaller question about a node id — its glyph, its label(s), its
+ * category, its real-world physics inputs, its display-distance domain,
+ * or whether moving to/from it crosses the star-map/star boundary.
+ *
+ * THE TREE THIS FILE DEFINES
+ * starmap → sun (+ ~16 real stars, + Sagittarius A*) → for the Sun:
+ * planet → moon, sun → belt → asteroid, sun → comets (hub) → comet; for
+ * every other star: exoplanet. Any physical body → leaf nodes (surface,
+ * orbit-log, rings — ringed planets only, notes). A star you're centered
+ * on also lists itself (starSelfEntry) as a selectable "travel back to
+ * the star map" entry, at distance 0 so it takes the grid's center spot.
+ *
+ * WHERE POSITIONS COME FROM
+ * Planets: real orbital elements + Kepler's equation, delegated to
+ * orbital.ts. Moons/asteroids/exoplanets: circular mean-motion
+ * (meanMotionAngle — a per-body phase offset derived from hashing its id,
+ * plus its real orbital period). Comets: full Kepler solve, delegated to
+ * cometFacts.ts. Stars and the belt/comets hub: fixed representative
+ * points, since there's nothing meaningful to animate there.
+ *
+ * WHAT THIS FILE DOES NOT KNOW ABOUT
+ * randomSystem.ts's generated planets (Sagittarius A*'s destination) are
+ * deliberately invisible here — App.tsx constructs their OrbitEntry
+ * objects itself and overrides getOrbitChildren's result for that one
+ * node, rather than teaching this file about fictional, non-persisted
+ * content. getNodeKind's fallback to "planet" for unrecognized ids is
+ * what lets those generated planets still get sensible category labels
+ * and leaf/non-leaf treatment elsewhere without this file's help.
+ * ============================================================================
+ */

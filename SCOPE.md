@@ -4,7 +4,8 @@ This is the founding vision statement for the project — **Starsystem**,
 named in the 2026-08-06 addendum below — where the `tui/` solar-system
 engine is headed long-term, beyond what's currently built. Not a spec or
 a commitment to build all of this; a record of the idea so later
-decisions can be checked against it.
+decisions can be checked against it. See `CODEBOT.md` for the *how* of
+code generation itself, as distinct from this file's *why*.
 
 ## Vision (lightly edited for readability)
 

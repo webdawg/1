@@ -1,3 +1,10 @@
+/**
+ * Curated real facts for the solar system's major/notable moons — not
+ * an exhaustive catalog (Jupiter and Saturn alone have well over a
+ * hundred known moons between them, most tiny and irregular). Positions
+ * are computed elsewhere (worldTree.ts's circular mean-motion
+ * approximation), using this file's orbitalPeriodDays/distanceFromPlanetKm.
+ */
 import type { PlanetName } from "./orbital.js";
 
 export interface MoonFacts {
@@ -157,12 +164,44 @@ export const MOON_FACTS: Record<MoonId, MoonFacts> = {
   },
 };
 
+/** Type guard: is this id one of the curated moon ids in MOON_ORDER? */
 export function isMoonId(id: string): id is MoonId {
   return (MOON_ORDER as readonly string[]).includes(id);
 }
 
+/** All curated moons of a given planet, nearest-first. */
 export function getMoonsOf(planet: PlanetName): MoonId[] {
   return MOON_ORDER.filter((id) => MOON_FACTS[id].parent === planet).sort(
     (a, b) => MOON_FACTS[a].distanceFromPlanetKm - MOON_FACTS[b].distanceFromPlanetKm
   );
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — moonFacts.ts
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * Real curated facts for 15 major/notable moons across Earth, Mars,
+ * Jupiter, Saturn, Uranus, and Neptune — MOON_ORDER is the id list,
+ * MOON_FACTS the per-moon data (label, parent planet, description,
+ * diameter, orbital period, real distance from its parent). Every one
+ * of these moons is tidally locked, so orbitalPeriodDays also equals
+ * its rotation period — noted once on the interface rather than per moon.
+ *
+ * HOW OTHER FILES USE THIS
+ * worldTree.ts computes each moon's live angular position via circular
+ * mean-motion (a per-body phase offset plus this file's real
+ * orbitalPeriodDays) — not a full ephemeris, an approximation
+ * deliberately simpler than orbital.ts's real Keplerian planet math.
+ * getMoonsOf(planet) is how worldTree.ts finds a planet's moon set,
+ * sorted nearest-first, when building that planet's orbit children.
+ *
+ * PATTERN THIS FILE FOLLOWS
+ * Same shape as every other `*Facts.ts` file: an id union (MoonId), an
+ * interface (MoonFacts), a `Record<MoonId, MoonFacts>`, and an `isXId`
+ * type guard. Static curated data, no network calls.
+ * ============================================================================
+ */

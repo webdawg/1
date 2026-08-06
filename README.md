@@ -58,6 +58,10 @@ distinct scope:
   assistant) working in this repo: project/file structure, conventions,
   and a "Current status" section tracking tactical, uncommitted-right-now
   detail that changes faster than `ROADMAP.md`'s phases do.
+- [`CODEBOT.md`](CODEBOT.md) — general principles and foundational items
+  for code generation itself: data integrity, abstraction level, comment
+  style, verification discipline. The "how to write it," applying to any
+  code generation in this repo, human or AI.
 
 ## Python skeleton
 

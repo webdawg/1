@@ -1,3 +1,11 @@
+/**
+ * Renders the NAVIGATION tile's main content: a full-width grid of
+ * nothing but icon+label pairs for the current center and everything
+ * orbiting it. Generic over OrbitEntry/DistanceDomain — new body
+ * categories need no changes here, just a glyph in worldTree.ts. Renders
+ * bare content only, no border of its own; App.tsx owns the tile border
+ * that wraps this.
+ */
 import React from "react";
 import { Box, Text } from "ink";
 import { computeGridPositions } from "../layout.js";
@@ -93,6 +101,7 @@ function findFreeSlot(
   return null;
 }
 
+/** Builds the full character grid for one frame: the center glyph (or the star's own self-entry, if present), then every orbit entry's icon and label stamped in priority order. */
 function buildGrid(
   centerGlyph: string,
   entries: OrbitEntry[],
@@ -149,6 +158,7 @@ function buildGrid(
   return grid;
 }
 
+/** Renders one grid row, run-length-encoding adjacent same-styled cells into a single Text run each rather than one Text per character. */
 function GridRow({ row }: { row: Cell[] }): React.JSX.Element {
   const runs: { text: string; color?: string; bold?: boolean }[] = [];
   for (const cell of row) {
@@ -170,6 +180,7 @@ function GridRow({ row }: { row: Cell[] }): React.JSX.Element {
   );
 }
 
+/** The orbit-grid view itself: builds the frame's character grid from props and renders it row by row. Memoized since it's re-rendered every position-recompute tick. */
 function SolarView({ centerGlyph, orbitEntries, domain, focusedId, gridWidth, gridHeight }: Props): React.JSX.Element {
   const grid = buildGrid(centerGlyph, orbitEntries, domain, focusedId, gridWidth, gridHeight);
 
@@ -183,3 +194,56 @@ function SolarView({ centerGlyph, orbitEntries, domain, focusedId, gridWidth, gr
 }
 
 export default React.memo(SolarView);
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — SolarView.tsx
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * The NAVIGATION tile's main content component: a full-width character
+ * grid showing the current center's glyph plus every orbiting entry as
+ * an icon+label pair, positioned by real angle/distance. No text list —
+ * that's the HUD/bottom-panel's job elsewhere. Renders bare content with
+ * no border of its own; App.tsx's wrapping Box owns the one border that
+ * encloses this (and ContentView/WarpTransition, its siblings in the
+ * same tile slot).
+ *
+ * HOW POSITIONS BECOME A GRID
+ * computeGridPositions (layout.ts) turns each entry's real angle/distance
+ * into an (x, y) cell — the single source of truth shared with
+ * spatialNav.ts's direction-picking logic. buildGrid then stamps
+ * characters into a 2D Cell[][] buffer: first the center glyph (unless a
+ * star's own self-entry at distance 0 takes that spot instead — see
+ * worldTree.ts's starSelfEntry), then every entry's icon, then every
+ * entry's label, via stampRow.
+ *
+ * WHY TWO STAMPING PASSES (ICONS, THEN LABELS)
+ * A label stamp is much wider than an icon stamp and can span over
+ * where a nearby body's icon belongs in a crowded cluster (e.g. the
+ * inner rocky planets, or a dense cluster of nearby stars on the map).
+ * Claiming every icon first — via findFreeSlot, which nudges a stamp to
+ * the nearest open cell rather than dropping it — guarantees every body
+ * gets *some* visible icon; only labels are ever silently omitted when
+ * space runs out. This was a real bug fixed earlier in the project
+ * (crowded clusters used to drop entries entirely).
+ *
+ * COLLISION MODEL
+ * occupied (an OccupiedRanges map) tracks claimed column ranges per row.
+ * stampRow refuses to write if any part of its span collides with an
+ * existing claim, returning false so callers can react (findFreeSlot
+ * uses this to search outward ring by ring for open space). Stamping
+ * happens in priority order — center first, then the focused entry, then
+ * everything else — so the most important content on screen is the last
+ * to lose a collision.
+ *
+ * RENDERING
+ * GridRow run-length-encodes each row's cells into same-styled Text runs
+ * (avoids one Ink Text element per character). The whole component is
+ * wrapped in React.memo since it re-renders every position-recompute
+ * tick (currently every 5 seconds) even when nothing on screen actually
+ * moved enough to matter.
+ * ============================================================================
+ */

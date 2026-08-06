@@ -1,3 +1,10 @@
+/**
+ * Curated real facts for the star map: Sol's own gravity/diameter, ~16
+ * real nearby stars (plus Sagittarius A*, curated the same way despite
+ * not literally being a star — see its own entry below), and ~27 real
+ * curated exoplanets orbiting them. A static snapshot, not a live feed,
+ * same pattern as every other `*Facts.ts` file in this codebase.
+ */
 export const STARMAP_ID = "starmap";
 
 export const STARMAP_FACTS = {
@@ -290,6 +297,7 @@ export const STAR_FACTS: Record<Exclude<StarId, "sun">, StarFacts> = {
   },
 };
 
+/** Type guard: is this id "sun" or one of the curated stars in STAR_ORDER (Sagittarius A* included)? */
 export function isStarId(id: string): id is StarId {
   return id === "sun" || (STAR_ORDER as readonly string[]).includes(id);
 }
@@ -567,12 +575,62 @@ export type ExoplanetId = keyof typeof RAW_EXOPLANET_FACTS;
 // don't set it.
 export const EXOPLANET_FACTS: Record<ExoplanetId, ExoplanetFacts> = RAW_EXOPLANET_FACTS;
 
+/** Type guard: is this id one of the curated exoplanets in EXOPLANET_FACTS? */
 export function isExoplanetId(id: string): id is ExoplanetId {
   return Object.prototype.hasOwnProperty.call(EXOPLANET_FACTS, id);
 }
 
+/** All curated exoplanets of a given star, nearest-first — empty for stars with no curated exoplanets (e.g. Alpha Centauri, Sagittarius A*). */
 export function getExoplanetsOfStar(starId: Exclude<StarId, "sun">): ExoplanetId[] {
   return (Object.keys(EXOPLANET_FACTS) as ExoplanetId[])
     .filter((id) => EXOPLANET_FACTS[id].starId === starId)
     .sort((a, b) => EXOPLANET_FACTS[a].distanceAU - EXOPLANET_FACTS[b].distanceAU);
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — starFacts.ts
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * The star map's curated data: Sol's own gravity/diameter (SUN_GRAVITY/
+ * SUN_DIAMETER_KM — kept separate since Sol is excluded from STAR_FACTS
+ * itself), ~16 real nearby star systems, and ~27 real curated exoplanets
+ * orbiting them. Also owns the star map's own root (STARMAP_ID/
+ * STARMAP_FACTS) and, on the same STAR_FACTS/STAR_ORDER shape as every
+ * real star, Sagittarius A* — a supermassive black hole, not literally a
+ * star, curated here anyway on the same precedent PSR B1257+12 (a
+ * pulsar) already set: everything keyed off isStarId works for it with
+ * zero special-casing elsewhere.
+ *
+ * TWO KINDS OF ENTRY, ONE SHAPE
+ * Every StarId (except "sun") has a StarFacts entry: label, description,
+ * real distanceLy, spectralType, a display glyph/angle, and real
+ * gravity/diameterKm (used by relativity.ts's gravitational time
+ * dilation via worldTree.ts's getDilationInputs). For the pulsar and
+ * Sagittarius A*, gravity/diameterKm aren't literal stellar values —
+ * they're derived from each object's real physics (a neutron star's
+ * real mass/radius; a black hole's Schwarzschild radius) via the same
+ * GM = gravity·radius² construction used everywhere else, so "standing"
+ * on either means standing at its real physical extreme.
+ *
+ * EXOPLANETS
+ * RAW_EXOPLANET_FACTS uses `satisfies Record<string, ExoplanetFacts>`
+ * rather than a direct `Record<ExoplanetId, ExoplanetFacts>` annotation
+ * specifically so each entry keeps its own precise literal type —
+ * otherwise the optional statusNote field would be inaccessible on
+ * entries that don't set it. EXOPLANET_FACTS re-exposes the same data
+ * under the full ExoplanetFacts shape for consumers. getExoplanetsOfStar
+ * is how worldTree.ts finds a star's real curated planets, nearest-first;
+ * most curated stars have 1-7 (TRAPPIST-1 has all seven of its real
+ * planets), a few (Alpha Centauri, Sagittarius A*) have none.
+ *
+ * THE HARDCODED QUOTE
+ * The block comment above SUN_GRAVITY/SUN_DIAMETER_KM is lore, entered
+ * verbatim per direct instruction — see SCOPE.md's 2026-08-06 addendum.
+ * Not a spec item; nothing in this codebase performs anything resembling
+ * "tensor like calculations" on the Sun.
+ * ============================================================================
+ */

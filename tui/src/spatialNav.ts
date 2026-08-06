@@ -19,6 +19,13 @@ const PERPENDICULAR_PENALTY = 3;
 // clearly closer and better-aligned).
 const HOME_PERPENDICULAR_PENALTY = 0.5;
 
+/**
+ * Given the currently-focused entry and a pressed arrow key, returns the
+ * id of whichever other entry is actually positioned in that direction
+ * on screen — nearest-neighbor scoring with a perpendicular-distance
+ * penalty so "almost straight" beats "diagonal," falling back to
+ * angle-order wraparound when nothing lies that direction at all.
+ */
 export function pickNextFocus(
   entries: OrbitEntry[],
   positions: Map<string, GridPoint>,
@@ -75,3 +82,39 @@ export function pickNextFocus(
   const nextIndex = (currentIndex + step + entries.length) % entries.length;
   return entries[nextIndex].id;
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — spatialNav.ts
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * One function, pickNextFocus, that makes arrow-key navigation spatial
+ * instead of cycling a hidden sorted list: given the on-screen (x, y) of
+ * every orbit entry (from layout.ts's computeGridPositions — the same
+ * positions SolarView renders from, so this can never disagree with what
+ * the player actually sees) and a direction, it picks whichever entry is
+ * genuinely closest in that direction.
+ *
+ * HOW SCORING WORKS
+ * For a given direction, candidates on the wrong side are excluded
+ * outright (dx <= 0 for "right", etc.), then scored as
+ * primary + perpendicular * penalty, where primary is the delta along
+ * the pressed axis and perpendicular is the delta on the other axis —
+ * lower wins, ties broken by id for determinism. penalty is normally 3,
+ * but 0.5 for a distance-0 "home" entry specifically: home sits at the
+ * grid's exact center, so at full penalty a genuinely-closer neighbor
+ * could out-score it from every direction at once, permanently stranding
+ * it behind a 2-cycle between two other entries (hit in practice: Mars
+ * vs. Mercury excluding the Sun). The lighter penalty keeps it reachable
+ * from a wide cone of directions without becoming an unconditional magnet.
+ *
+ * THE FALLBACK
+ * If nothing scores (e.g. pressing "up" from the topmost entry), falls
+ * back to angle-order wraparound — step ±1 through the entries array,
+ * wrapping — so arrow keys always do *something* rather than going dead
+ * at a layout edge.
+ * ============================================================================
+ */

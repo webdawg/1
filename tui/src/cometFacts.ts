@@ -1,3 +1,9 @@
+/**
+ * Curated real facts for 4 named comets, plus their own real-time
+ * positions solved via the full Kepler equation (not the circular
+ * mean-motion approximation moons/asteroids/exoplanets use elsewhere —
+ * comets' eccentricity is too extreme for that to look sane).
+ */
 import { solveEccentricAnomaly, rev } from "./orbital.js";
 
 export const COMETS_HUB_ID = "comets";
@@ -72,6 +78,7 @@ export const COMET_FACTS: Record<CometId, CometFacts> = {
   },
 };
 
+/** Type guard: is this id one of the curated comet ids in COMET_ORDER? */
 export function isCometId(id: string): id is CometId {
   return (COMET_ORDER as readonly string[]).includes(id);
 }
@@ -82,6 +89,7 @@ export interface CometPosition {
   angleDeg: number;
 }
 
+/** A comet's real position at `date`, solved via the full Kepler equation from its real perihelion/aphelion/period/last-perihelion-date — see orbital.ts's solveEccentricAnomaly for the shared Newton's-method solver. */
 export function getCometPosition(cometId: CometId, date: Date): CometPosition {
   const facts = COMET_FACTS[cometId];
   const a = (facts.perihelionAU + facts.aphelionAU) / 2;
@@ -101,3 +109,39 @@ export function getCometPosition(cometId: CometId, date: Date): CometPosition {
     angleDeg: rev((Math.atan2(yv, xv) * 180) / Math.PI),
   };
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — cometFacts.ts
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * Real curated facts for 4 named comets (Halley, Encke, Hale-Bopp,
+ * Hyakutake) — nucleus diameter, perihelion/aphelion distance, orbital
+ * period, and the ISO date of their most recent real perihelion passage
+ * — plus getCometPosition, which computes each comet's actual real-time
+ * position from that data. Also owns COMETS_HUB_ID/COMETS_HUB_FACTS, a
+ * fixed representative point standing in for "comets" as a category (the
+ * same "no single honest position" treatment beltFacts.ts gives the
+ * asteroid belt).
+ *
+ * WHY THE FULL KEPLER SOLVE
+ * Every other non-planet body in this codebase (moons, asteroids,
+ * exoplanets) uses a simple circular mean-motion approximation. Comets
+ * don't: their real eccentricity is too extreme (Halley's orbit swings
+ * from 0.586 AU to 35.1 AU) for a circular approximation to look sane,
+ * so getCometPosition instead reuses orbital.ts's real Kepler-equation
+ * solver (solveEccentricAnomaly) — the same approach used for the 8
+ * real planets, just with a comet's own eccentric elements and Newton's
+ * method run with more iterations (very eccentric orbits converge more
+ * slowly). periodUncertain flags long-period comets (Hale-Bopp,
+ * Hyakutake) whose real orbit is easily perturbed and only roughly known.
+ *
+ * PATTERN THIS FILE FOLLOWS
+ * Same shape as every other `*Facts.ts` file for the individual comets
+ * (id union, interface, curated Record, isXId guard); the hub is its own
+ * small addition on top, mirroring beltFacts.ts's BELT_ID/BELT_FACTS pair.
+ * ============================================================================
+ */

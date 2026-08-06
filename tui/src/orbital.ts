@@ -9,6 +9,7 @@ const DEG = Math.PI / 180;
 // Milliseconds at J2000.0 epoch (2000-01-01 12:00 UTC).
 const J2000_MS = Date.UTC(2000, 0, 1, 12, 0, 0);
 
+/** Reduces a degree value into [0, 360). */
 export function rev(deg: number): number {
   const r = deg % 360;
   return r < 0 ? r + 360 : r;
@@ -140,6 +141,7 @@ function at(pair: [number, number], d: number): number {
   return pair[0] + pair[1] * d;
 }
 
+/** A planet's real heliocentric position at `date`, solved from its real orbital elements via Kepler's equation. Earth is a special case — see the inline comment below. */
 export function getPlanetPosition(name: PlanetName, date: Date): PlanetPosition {
   const d = daysSinceJ2000(date);
   const el = ELEMENTS[name];
@@ -183,6 +185,47 @@ export function getPlanetPosition(name: PlanetName, date: Date): PlanetPosition 
   };
 }
 
+/** All 8 real planets' positions at `date`, in PLANET_ORDER. */
 export function getPlanetPositions(date: Date): PlanetPosition[] {
   return PLANET_ORDER.map((name) => getPlanetPosition(name, date));
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — orbital.ts
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * Real Keplerian orbital mechanics for the 8 planets — the only body
+ * category in the game solved this precisely (moons/asteroids/exoplanets
+ * use a simpler circular mean-motion approximation elsewhere; comets use
+ * a full Kepler solve too, but with their own orbital elements in
+ * cometFacts.ts). Formulas adapted from Paul Schlyter's "How to compute
+ * planetary positions," good to roughly an arcminute around the present
+ * era — not observatory-grade, but real astronomy, not an approximation
+ * invented for this game.
+ *
+ * HOW IT WORKS
+ * ELEMENTS holds each planet's six real orbital elements (N, i, w, a, e,
+ * M) plus their real per-day rates of change, referenced to the J2000.0
+ * epoch. getPlanetPosition(name, date) evaluates those elements at the
+ * given date, solves Kepler's equation (E - e·sin(E) = M) for the
+ * eccentric anomaly via Newton's method (solveEccentricAnomaly), derives
+ * the position in the orbital plane, then projects it into the ecliptic
+ * plane and flattens to 2D (drops z) for this engine's top-down view.
+ *
+ * THE EARTH SPECIAL CASE
+ * ELEMENTS.earth is actually the Sun's *geocentric* elements (how the Sun
+ * appears to move around Earth) — real historical convention for this
+ * formula set — so getPlanetPosition rotates that result 180° to recover
+ * Earth's real heliocentric position instead, rather than carrying a
+ * second, redundant set of elements.
+ *
+ * WHAT THIS FILE DELIBERATELY DOES NOT DO
+ * No knowledge of glyphs, labels, or the world tree — worldTree.ts
+ * consumes getPlanetPositions/getPlanetPosition and wraps the results in
+ * OrbitEntry objects. This file is pure physics, nothing else.
+ * ============================================================================
+ */

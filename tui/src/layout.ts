@@ -1,4 +1,11 @@
-/** Turns (angle, distance) pairs into integer character-grid coordinates. */
+/**
+ * Turns (angle, distance) pairs into integer character-grid coordinates.
+ * Pure math, no React — the single source of truth SolarView (rendering)
+ * and spatialNav (arrow-key direction decisions) both build on, so what's
+ * drawn and what's reachable can never disagree. Also owns zoom math and
+ * SOLAR BASE JUMP travel-duration scaling, since both are just more real-
+ * distance-to-display-value mappings in the same spirit.
+ */
 
 export interface GridPoint {
   x: number;
@@ -10,6 +17,7 @@ export interface GridPoint {
 // squashed into a vertical oval.
 const ASPECT_RATIO = 2.1;
 
+/** Converts a (center, angle, radius) polar position into an integer (x, y) grid cell, stretching x by ASPECT_RATIO so orbits read round on a taller-than-wide terminal cell grid. */
 export function polarToGrid(
   centerX: number,
   centerY: number,
@@ -185,3 +193,50 @@ export function computeTravelDurationMs(distanceLy: number): number {
   const t = Math.max(0, Math.min(1, Math.sqrt(Math.max(0, distanceLy)) / Math.sqrt(MAX_KNOWN_DISTANCE_LY)));
   return Math.round(MIN_TRAVEL_MS + t * (MAX_TRAVEL_MS - MIN_TRAVEL_MS));
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — layout.ts
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * Pure position/scaling math for the whole engine — no React, no world-
+ * model knowledge (it never asks "what kind of body is this," only "given
+ * an angle/distance/domain, where does it go"). Two consumers depend on
+ * this staying the single source of truth: SolarView.tsx (rendering) and
+ * spatialNav.ts (arrow-key direction decisions) — both call
+ * computeGridPositions rather than computing their own coordinates, so
+ * what's drawn and what arrow keys navigate to can never drift apart.
+ *
+ * THE MAIN PIPELINE
+ * scaleDistance maps a real distance onto a display radius between
+ * minRadius/maxRadius using a sqrt curve (so inner bodies don't collapse
+ * together next to outer ones); polarToGrid then converts that radius
+ * plus an angle into an integer (x, y) grid cell, stretching the x axis
+ * by ASPECT_RATIO to counter terminal cells being taller than they are
+ * wide. computeGridPositions runs this for every entry in a view, with
+ * two special cases: distance 0 always plots dead-center (not floored up
+ * to minRadius), and an entry with pinnedEdge skips the distance/angle
+ * math entirely in favor of a fixed edge column/row (currently only
+ * Sagittarius A*, via worldTree.ts — see PinnedEdge).
+ *
+ * ZOOM AND AUTO-ZOOM
+ * applyZoom shrinks/grows a distance domain's span around its minimum;
+ * anything that falls outside the new effective range clamps to the
+ * outer rim, the same behavior an ordinary out-of-domain distance
+ * already has. computeAutoZoomLevel picks a sensible starting zoom per
+ * view — enough to fit AUTO_ZOOM_KEEP_FRACTION (75%) of real distances
+ * inside the visible radius, sacrificing the most extreme ~25% to the
+ * rim, rather than always starting flat and making the player zoom in
+ * by hand.
+ *
+ * TRAVEL DURATION
+ * computeTravelDurationMs is the same sqrt-scaling idea applied to time
+ * instead of space: a SOLAR BASE JUMP's travel phase runs from
+ * MIN_TRAVEL_MS (Sol itself) to MAX_TRAVEL_MS (the farthest curated
+ * star, MAX_KNOWN_DISTANCE_LY), matching the founding vision's "5-10
+ * seconds depending on distance."
+ * ============================================================================
+ */

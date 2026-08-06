@@ -15,7 +15,11 @@ icon/placement rules, spatial nav, session model) — the concrete design
 to keep in sync with the code, distinct from `SCOPE.md`'s vision and
 `ROADMAP.md`'s plan. See `DEVELOPMENT.md` for the development
 environment: prerequisites, setup, running, and how TUI changes get
-verified (no test framework yet, so this matters more than usual).
+verified (no test framework yet, so this matters more than usual). See
+`CODEBOT.md` for general principles and foundational items when it
+comes to code generation itself (data integrity, abstraction level,
+comment style, verification discipline) — the "how to write it,"
+distinct from all of the above.
 
 ## Capturing new vision paragraphs
 
@@ -656,7 +660,43 @@ literally true), while "infinite connections between stars" got a real
 line in `SPEC.md`'s World model tying it to something already
 true today — the star map's graph has no fixed edge count, and
 Sagittarius A* alone already connects to a genuinely unbounded space of
-generated destinations.
+generated destinations. Following that, corrected the hardcoded quote
+in `starFacts.ts` on direct follow-up — it had been lightly paraphrased
+("tensor-like," "particle") rather than entered verbatim as instructed;
+now the full original sentence, typos included, lives as a comment
+above the Sun's real gravity/diameter constants.
+
+Also added this session: `CODEBOT.md`, a new instruction document for
+general principles and foundational items in code generation — the
+*how to write it*, distinct from `SCOPE.md`'s *why*, `SPEC.md`'s *how
+the engine behaves*, `ROADMAP.md`'s *what's next*, and
+`DEVELOPMENT.md`'s *how to run/verify it*. Content is grounded in
+practices already demonstrated repeatedly this session rather than
+invented from scratch: real-data-with-citations (and loudly-flagged
+exceptions, per `randomSystem.ts`'s own framing), no premature
+abstraction, why-not-what comments, one source of truth for anything
+two systems need to agree on (`layout.ts`'s `computeGridPositions`),
+pure functions for non-UI logic, visual verification via tmux at
+multiple widths (not just `tsc --noEmit`), updating docs in the same
+change as the code, and git discipline (commit/push only when asked).
+Cross-referenced from every other doc's opening line, and from
+`README.md`'s Documentation list, following the existing cross-
+reference pattern rather than introducing a new one. Explicitly *not*
+folded into a single master spec file — the user declined that
+consolidation when it came up earlier this session — so the doc stack
+is now six files, not five.
+
+Also added this session: two new `CODEBOT.md` principles — standard,
+industry/language-appropriate comment coverage on all code (a floor,
+not a substitute for why-not-what comments), and a "cold explainer"
+commented-out block appended to the end of every file, summarizing
+everything that file does for a reader with no other context. Applied
+retroactively, per direct instruction, to all 22 `.ts`/`.tsx` files
+under `tui/src/`: a module-level comment where one was missing, doc
+comments on exported functions/types that lacked them (existing
+why-comments were left alone, not duplicated or rewritten), and a cold
+explainer trailer on every file. `npm run typecheck` passed cleanly
+after each file and again at the end of the full sweep.
 
 Nothing else in-progress/uncommitted right now — check `ROADMAP.md`
 Phase 2 for what's next (dwarf planets, bots/NPCs, BBS-style messages,

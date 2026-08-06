@@ -1,3 +1,4 @@
+/** Curated real facts for the 4 largest bodies in the main asteroid belt. */
 export interface AsteroidFacts {
   label: string;
   description: string;
@@ -44,10 +45,40 @@ export const ASTEROID_FACTS: Record<AsteroidId, AsteroidFacts> = {
   },
 };
 
+/** Type guard: is this id one of the curated asteroid ids in ASTEROID_ORDER? */
 export function isAsteroidId(id: string): id is AsteroidId {
   return (ASTEROID_ORDER as readonly string[]).includes(id);
 }
 
+/** All curated asteroids, nearest-first — how worldTree.ts orders the belt's orbit children. */
 export function getAsteroidsSortedByDistance(): AsteroidId[] {
   return [...ASTEROID_ORDER].sort((a, b) => ASTEROID_FACTS[a].distanceAU - ASTEROID_FACTS[b].distanceAU);
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — asteroidFacts.ts
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * Real curated facts for the 4 largest bodies in the main asteroid belt
+ * (Ceres, Vesta, Pallas, Hygiea) — not remotely exhaustive (over a
+ * million known objects larger than 1 km live in the real belt), just
+ * the standout few worth a curated entry.
+ *
+ * HOW OTHER FILES USE THIS
+ * worldTree.ts positions each asteroid via circular mean-motion (a
+ * per-body phase offset plus this file's real orbitalPeriodYears,
+ * converted to days), using getAsteroidsSortedByDistance to order them
+ * as the belt's orbit children — nearest (by real distanceAU) first.
+ * ContentView.tsx's AsteroidSurface/AsteroidOrbitLog components read
+ * ASTEROID_FACTS directly for their leaf content.
+ *
+ * PATTERN THIS FILE FOLLOWS
+ * Same shape as every other `*Facts.ts` file: an id union (AsteroidId),
+ * an interface (AsteroidFacts), a curated Record, and an isXId type
+ * guard. Static data, no network calls.
+ * ============================================================================
+ */

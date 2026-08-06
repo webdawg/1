@@ -1,3 +1,9 @@
+/**
+ * Renders a single planet from a Sagittarius A* generated random
+ * system: a brief "touchdown" ground-growing animation on first arrival
+ * at the civilization's home planet, then (immediately for every other
+ * planet, and forever after for that one) a static description card.
+ */
 import React, { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import type { PlayerType } from "../session.js";
@@ -35,6 +41,7 @@ function blankGrid(gridWidth: number, gridHeight: number): Cell[][] {
   return Array.from({ length: gridHeight }, () => Array.from({ length: gridWidth }, () => ({ char: " " })));
 }
 
+/** One frame of the touchdown animation: a growing green disk (the ground), with the traveler figure appearing once it's big enough to stand on. */
 function buildIntroFrame(step: number, playerType: PlayerType, gridWidth: number, gridHeight: number): Cell[][] {
   const grid = blankGrid(gridWidth, gridHeight);
   const centerX = Math.floor(gridWidth / 2);
@@ -68,6 +75,7 @@ function buildIntroFrame(step: number, playerType: PlayerType, gridWidth: number
   return grid;
 }
 
+/** Renders one grid row, run-length-encoding adjacent same-styled cells into a single Text run each. */
 function GridRow({ row }: { row: Cell[] }): React.JSX.Element {
   const runs: { text: string; color?: string; bold?: boolean }[] = [];
   for (const cell of row) {
@@ -137,3 +145,42 @@ export default function RandomPlanetCard({ planet, playerType, gridWidth, gridHe
     </Box>
   );
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — RandomPlanetCard.tsx
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * The display component for a single planet inside a Sagittarius A*
+ * generated random system (randomSystem.ts's RandomPlanet). Two states:
+ * a brief (~1s, INTRO_STEPS frames at FRAME_MS each) touchdown animation
+ * — a growing green disk standing in for the ground, with the traveler
+ * figure appearing once there's enough of it to stand on — played once
+ * on first arrival at the civilization's home planet, then a static
+ * description card for every subsequent render.
+ *
+ * WHY A SEPARATE, LIGHTER ANIMATION FROM WarpTransition
+ * This isn't a mode transition like the star-dive/portal sequence in
+ * WarpTransition.tsx — it's a smaller "and now you're standing here"
+ * beat, so it's deliberately simpler: one frame-builder, no setup/
+ * traveling phase split, reusing only TRAVELER_FIGURES (not the whole
+ * component) from WarpTransition.tsx.
+ *
+ * WHEN THE ANIMATION PLAYS
+ * The `animate` prop is true only for the very first arrival on the
+ * home planet; every other planet in the system, and every revisit,
+ * renders already-`settled` (the static card) immediately. App.tsx
+ * mounts this with `key={planet.id}` so navigating between different
+ * generated planets creates a fresh component instance — and therefore
+ * a fresh animation decision — rather than carrying stale intro-
+ * animation state over from whichever planet was viewed last.
+ *
+ * WHAT IT RENDERS ONCE SETTLED
+ * A small bordered card (matching ContentView.tsx's leaf-card styling)
+ * with an italic touchdown/standing line (wording differs slightly for
+ * the civilization's home planet) and the planet's generated description.
+ * ============================================================================
+ */

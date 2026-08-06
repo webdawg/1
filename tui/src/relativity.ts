@@ -28,11 +28,13 @@ const AGE_OF_UNIVERSE_YEARS_AT_REFERENCE = 13_797_000_000;
 const REFERENCE_EPOCH_MS = Date.UTC(2026, 0, 1);
 const AGE_OF_UNIVERSE_SECONDS_AT_REFERENCE = AGE_OF_UNIVERSE_YEARS_AT_REFERENCE * SECONDS_PER_JULIAN_YEAR;
 
+/** Seconds since the Big Bang at real time `now`, as a float64 — see universeAgeWholeSeconds for why this loses sub-minute precision and isn't fit for anything meant to visibly tick. */
 export function universeAgeSeconds(now: Date): number {
   const elapsedSeconds = (now.getTime() - REFERENCE_EPOCH_MS) / 1000;
   return AGE_OF_UNIVERSE_SECONDS_AT_REFERENCE + elapsedSeconds;
 }
 
+/** The `time` command's full "Time 2" line: years (comma-grouped), days, and an H:M:S remainder, all derived from a universeAgeSeconds() total. */
 export function formatUniverseAge(seconds: number): string {
   const years = Math.floor(seconds / SECONDS_PER_JULIAN_YEAR);
   let remainder = seconds - years * SECONDS_PER_JULIAN_YEAR;
@@ -237,3 +239,61 @@ export function formatDriftMs(ms: number): string {
   if (abs >= 0.001) return `${sign}${(abs * 1000).toFixed(3)}µs`;
   return `${sign}${(abs * 1_000_000).toFixed(3)}ns`;
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — relativity.ts
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * All real physics and time math in the game, as pure functions/constants
+ * — no React, no session state, no knowledge of what a "planet" or "moon"
+ * is (that's worldTree.ts's getDilationInputs, which maps a node id to
+ * the DilationInputs shape this file consumes). Everything here is either
+ * a real, cited constant (GRAVITY collaboration 2019, Bennett & Bovy
+ * 2019, Planck 2018, IAU 1985) or a real formula applied to real curated
+ * data — the sole deliberate exception, and only for illustrative framing
+ * rather than fabricated data, is galacticOrbitPhaseDeg (see its own
+ * comment for why).
+ *
+ * THREE TIMES
+ * universeAgeSeconds/formatUniverseAge give the full years/days/H:M:S
+ * breakdown the `time` command uses. The HUD's persistent GALACTIC TIMES
+ * row can't use that same total, though: at ~4.35e17 seconds, float64
+ * precision only resolves to about ±64 seconds, so a naive per-second
+ * reading would sit visibly frozen. universeAgeWholeSeconds sidesteps
+ * this with bigint arithmetic (the reference age converts to bigint
+ * exactly, since SECONDS_PER_JULIAN_YEAR has no fractional remainder),
+ * giving formatUniverseAgeSeconds a count that ticks by exactly 1 every
+ * real second. dilationFactor/advanceDrift/formatDriftMs implement the
+ * third time — real gravitational time dilation (proper, non-linearized
+ * Schwarzschild formula) accumulated into a running drift as the player
+ * dwells at a body, driven by App.tsx's tick loop.
+ *
+ * GRAVITY AND VELOCITY
+ * gravityAtDistance and orbitalVelocityAtDistance are both built on the
+ * same GM = gravity * radius² construction dilationFactor uses — real
+ * Newtonian formulas (v = √(GM/d) for circular orbital velocity), not
+ * approximations invented for this game. formatGravity/formatVelocity
+ * auto-scale between fixed and scientific/percent-of-c notation, since
+ * curated values span ~22 orders of magnitude (the galactic constant to
+ * the curated pulsar's surface). formatGravityFormula sums the three
+ * gravity sources into the HUD's "Galactic Gravity Constant" row,
+ * explicitly not meant to represent anything physically felt.
+ *
+ * GALACTIC POSITION
+ * GALACTIC_CENTER_DISTANCE_LY/GALACTIC_ORBITAL_SPEED_MPS are the two real
+ * curated numbers everything galactic derives from (the Sun's distance
+ * from and orbital speed around Sagittarius A*). GALACTIC_GRAVITY_MPS2
+ * and GALACTIC_ORBIT_PERIOD_SECONDS are both *derived*, not separately
+ * sourced, from those two — and the orbit period comes out close to the
+ * real textbook range (~225-250 million years) as a sanity check.
+ * SUN_HEIGHT_ABOVE_GALACTIC_PLANE_LY is the one other independently-cited
+ * real number (Bennett & Bovy 2019), deliberately shared by the whole
+ * curated star cluster in starFacts.ts rather than computed per star —
+ * see its own comment for why that's an honest simplification, not a
+ * shortcut.
+ * ============================================================================
+ */

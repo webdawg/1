@@ -5,6 +5,7 @@ change; this file is the *what's next* and should. Review it at the start
 of a session to pick up work; check items off as they land; add items as
 scope gets clearer. Moment-to-moment "what's uncommitted right now" lives
 in `CLAUDE.md`'s Current status section, not here — this is phase-level.
+See `CODEBOT.md` for the general principles new work here should follow.
 
 Phases are roughly sequential but not strict gates — later-phase ideas can
 start early if they're cheap, and phases can overlap.

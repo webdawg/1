@@ -2,7 +2,9 @@
 
 What's needed to develop and run this repo, and what's just notes from
 getting it working. See `CLAUDE.md` for code structure, `SCOPE.md`/
-`ROADMAP.md` for the vision and plan.
+`ROADMAP.md` for the vision and plan, and `CODEBOT.md` for general code
+generation principles — the "verify visually, not just via typecheck"
+discipline this file's Testing section covers in detail is one of them.
 
 ## Prerequisites
 

@@ -1,3 +1,13 @@
+/**
+ * The main loop: arrow-key navigation, `/`-command mode, session
+ * persistence, and the two official tiles (NAVIGATION on top, HUD on the
+ * bottom) that every other screen renders inside of. This is the one
+ * component that owns `path` (where the player is in the world tree) and
+ * decides, each render, which of SolarView/ContentView/WarpTransition/
+ * Console/RandomPlanetCard actually gets displayed inside the NAVIGATION
+ * tile. See SPEC.md's Layout section for the tile-enclosure rules this
+ * file's render tree has to respect.
+ */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useApp, useInput, useWindowSize } from "ink";
 import SolarView from "./components/SolarView.js";
@@ -131,10 +141,13 @@ const MIN_GRID_HEIGHT = 5;
 const MIN_TOP_HEIGHT = MIN_GRID_HEIGHT + 4;
 
 interface Props {
+  /** The session to render — either freshly created or loaded via `--resume`, decided by index.tsx before this component ever mounts. */
   session: SessionData;
+  /** Whether `session` was just created this process (drives the one-time "save these to resume later" welcome log line). */
   isNewSession: boolean;
 }
 
+/** Root component — see the module comment above for what it owns. */
 export default function App({ session, isNewSession }: Props): React.JSX.Element {
   const { exit } = useApp();
   const sessionRef = useRef<SessionData>(session);
@@ -222,6 +235,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
 
+  /** Appends one line to the HUD's scrolling log, trimming to MAX_LOG_LINES. */
   function pushLog(line: string) {
     setLog((prev) => [...prev.slice(-(MAX_LOG_LINES - 1)), line]);
   }
@@ -252,11 +266,13 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
     });
   }
 
+  /** Writes a new path into both the session ref and disk — call after every setPath so a resume lands where the player actually was. */
   function persist(nextPath: string[]) {
     sessionRef.current.path = nextPath;
     void saveSession(sessionRef.current);
   }
 
+  /** Updates playerType in React state, the session ref, and disk together, so the HUD and a future resume never disagree about who you are. */
   function setAndPersistPlayerType(type: PlayerType) {
     setPlayerType(type);
     sessionRef.current.playerType = type;
@@ -500,6 +516,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
     { isActive: mode === "nav" && !transition && !consoleOpen }
   );
 
+  /** onChange handler for the command Prompt — also catches a fast/pasted Enter that Ink coalesces into the change event rather than firing onSubmit. */
   function handlePromptChange(value: string) {
     // Ink coalesces fast/bursty input (e.g. a real paste, or a laggy
     // connection) into a single onChange call instead of firing onSubmit,
@@ -513,6 +530,7 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
     runCommand(value.slice(0, newlineIndex));
   }
 
+  /** Parses and executes one `/`-command line — see SPEC.md's Keys and commands section for the full list this switch implements. */
   function runCommand(raw: string) {
     const value = raw.trim();
     setMode("nav");
@@ -738,3 +756,61 @@ export default function App({ session, isNewSession }: Props): React.JSX.Element
     </Box>
   );
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — App.tsx
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * The root component and main loop of the Starsystem TUI. It owns `path`
+ * (a string[] stack from the star map down to wherever the player is
+ * currently centered), decides what to render inside the NAVIGATION tile
+ * each frame, and owns the HUD tile's entire content below it. Every other
+ * component in this codebase (SolarView, ContentView, WarpTransition,
+ * Console, RandomPlanetCard, Prompt) is a child this file chooses among.
+ *
+ * STATE THIS FILE OWNS
+ * - path / focusedId: where the player is, and which sibling is highlighted.
+ * - randomSystem / hasPlayedLanding: Sagittarius A*'s freshly-generated,
+ *   never-persisted destination system (see randomSystem.ts) and whether
+ *   its one-time landing animation has already played this visit.
+ *   zoomLevel / transition / transitionPhase: view zoom, and the pending
+ *   SOLAR BASE JUMP (star-dive or portal) animation state.
+ * - mode / paused / promptValue: nav vs. command-typing mode, the
+ *   screen-freeze-for-copy/paste flag, and the command line's live text.
+ * - playerType / consoleOpen: HUMAN vs. LLM, and whether the `~` console
+ *   overlay is open.
+ * - log / tick / clockNow: the HUD's scrolling message log, the coarse 5s
+ *   position/drift tick, and the finer 1s wall-clock tick.
+ *
+ * KEY MECHANICS
+ * - Position/drift recompute every TICK_MS (5s); the HUD clock ticks every
+ *   1s independently so it visibly runs. Real gravitational time dilation
+ *   accumulates into sessionRef.current.timeDriftMs each tick, skipped
+ *   entirely mid-transition (no gravity well in transit) and while paused.
+ * - Crossing the star-map/star boundary (worldTree.ts's isStarBoundary)
+ *   triggers WarpTransition instead of an instant move — a star-dive
+ *   sequence normally, or (for Sagittarius A* specifically) a door/portal
+ *   sequence, chosen in startStarTransition and carried in `transition`.
+ * - Arriving at Sagittarius A* (completeTransition) generates a fresh
+ *   RandomSystem and immediately extends the path onto its civilization
+ *   planet's id, so the player lands already standing on the world that
+ *   matters; backing out reveals the rest of the generated system.
+ * - `/`-commands are parsed and executed in runCommand: help, back,
+ *   save/notes, load/whoami (session management), time, pause, quit/exit.
+ * - Arrow keys move focus via spatialNav's pickNextFocus over positions
+ *   computed by layout.ts's computeGridPositions — the same function
+ *   SolarView renders from, so what's shown and what's reachable never
+ *   disagree.
+ *
+ * WHAT THIS FILE DELIBERATELY DOES NOT DO
+ * It doesn't know the specifics of any body category (that's worldTree.ts's
+ * job), doesn't do its own position math (layout.ts), and doesn't draw the
+ * animated cinematics itself (WarpTransition.tsx / RandomPlanetCard.tsx) —
+ * it only decides *when* each of those things happens and wires their
+ * results into `path`/`log`/the session file.
+ * ============================================================================
+ */

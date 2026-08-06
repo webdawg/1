@@ -1,3 +1,4 @@
+/** Curated real facts for the 4 gas/ice giants' ring systems — the terrestrial planets have no entry here at all (see hasRings). */
 import type { PlanetName } from "./orbital.js";
 
 export interface RingFacts {
@@ -40,6 +41,35 @@ export const RING_FACTS: Partial<Record<PlanetName, RingFacts>> = {
   },
 };
 
+/** Whether a planet has a curated ring entry — drives worldTree.ts's applicableLeafKinds (the Rings leaf only exists for these 4). */
 export function hasRings(planet: PlanetName): boolean {
   return planet in RING_FACTS;
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — ringFacts.ts
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * Real curated facts for the ring systems of the 4 gas/ice giants
+ * (Jupiter, Saturn, Uranus, Neptune) — the only planets with rings.
+ * RING_FACTS is a Partial<Record<PlanetName, RingFacts>> rather than a
+ * full Record specifically because the 4 terrestrial planets genuinely
+ * have no rings and no entry, not a placeholder or a "—".
+ *
+ * HOW OTHER FILES USE THIS
+ * hasRings(planet) is what worldTree.ts's applicableLeafKinds checks to
+ * decide whether a planet gets a "Rings" leaf alongside the usual
+ * Surface/Orbit Log/Notes; ContentView.tsx's PlanetRings component reads
+ * RING_FACTS directly to render that leaf's content (composition, real
+ * inner/outer radius in km, discovery year and method).
+ *
+ * PATTERN THIS FILE FOLLOWS
+ * Same shape as every other `*Facts.ts` file, minus the id-union-type
+ * part (PlanetName already exists in orbital.ts) — an interface plus a
+ * curated record, no network calls.
+ * ============================================================================
+ */

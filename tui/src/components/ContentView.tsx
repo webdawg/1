@@ -1,3 +1,13 @@
+/**
+ * Renders leaf detail screens (Surface / Orbit Log / Rings / Notes) for
+ * whatever node the player is currently focused on. Switches on
+ * parseLeafId's owner/kind, so each body category gets its own small
+ * `<X>Surface>`/`<X>OrbitLog>` component and a branch in the dispatch
+ * switch at the bottom. Renders bare content, no border of its own for
+ * the file as a whole — each individual leaf component keeps its own
+ * small bordered "card," nested inside the NAVIGATION tile's outer
+ * border that App.tsx owns.
+ */
 import React from "react";
 import { Box, Text } from "ink";
 import { getPlanetPosition, type PlanetName } from "../orbital.js";
@@ -26,6 +36,7 @@ interface Props {
   notes: string[];
 }
 
+/** Formats a day count as days below 500, years above — the shared readout every OrbitLog component uses for orbital period. */
 function formatDays(days: number): string {
   if (days < 500) return `${days.toFixed(days < 10 ? 2 : 1)} days`;
   return `${(days / 365.25).toFixed(1)} years`;
@@ -258,6 +269,14 @@ function Notes({ notes }: { notes: string[] }): React.JSX.Element {
   );
 }
 
+/**
+ * Top-level dispatch: parses `nodeId` into a leaf (owner + kind) via
+ * worldTree.ts's parseLeafId, then routes to whichever `<X>Surface>` /
+ * `<X>OrbitLog>` component matches the owner's body category and the
+ * requested leaf kind. Falls through to "Nothing here." for any
+ * owner/kind combination that doesn't apply (e.g. a Rings leaf on a
+ * planet with no curated rings).
+ */
 export default function ContentView({ nodeId, date, notes }: Props): React.JSX.Element {
   const leaf = parseLeafId(nodeId);
   if (!leaf) {
@@ -327,3 +346,47 @@ export default function ContentView({ nodeId, date, notes }: Props): React.JSX.E
 
   return <Text dimColor>Nothing here.</Text>;
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — ContentView.tsx
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * The leaf-detail renderer: whatever screen shows once a player is
+ * focused on a specific node and asks for its Surface / Orbit Log /
+ * Rings / Notes content. Every body category in the codebase (planets,
+ * moons, the asteroid belt and its individual asteroids, the comets hub
+ * and its individual comets, the star map, individual stars, individual
+ * exoplanets) gets its own small pair of components here — a Surface
+ * (facts) and, where the body actually moves, an OrbitLog (live computed
+ * position) — each a small bordered "card" (`borderStyle="round"`,
+ * `paddingX={1}`), reading directly from that category's own `*Facts.ts`
+ * file for static data and worldTree.ts's position helpers
+ * (getMoonPosition/getAsteroidPosition/getExoplanetPosition,
+ * getPlanetPosition/getCometPosition from orbital.ts/cometFacts.ts) for
+ * anything that changes over time.
+ *
+ * THE PATTERN EVERY CATEGORY FOLLOWS
+ * `<X>Surface>` reads a facts record directly (italic description, then
+ * a blank spacer line, then a handful of labeled facts). `<X>OrbitLog>`
+ * additionally computes a live position and shows distance +
+ * toClockHour's o'clock readout + heading angle. Categories with a
+ * single fixed representative point instead of a real live position
+ * (the asteroid belt itself, the comets hub, the star map root) only
+ * get a Surface, no Orbit Log — trying to request one falls through to
+ * "Nothing here."
+ *
+ * DISPATCH
+ * ContentView (the only export) parses `nodeId` via worldTree.ts's
+ * parseLeafId into `{ owner, kind }`, then runs owner through a chain of
+ * type guards (isKnownPlanet, isMoonId, isAsteroidId, isCometId,
+ * isStarId, isExoplanetId, plus direct id comparisons for the belt/comet
+ * hub/star map singletons) to pick the right component pair, and `kind`
+ * to pick Surface vs. Orbit Log vs. Rings vs. Notes within it. Any
+ * unmatched combination — including a leaf that doesn't parse at all —
+ * renders a dim "Nothing here."
+ * ============================================================================
+ */

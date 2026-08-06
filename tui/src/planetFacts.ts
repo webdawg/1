@@ -1,3 +1,9 @@
+/**
+ * Curated real facts for the 8 planets — diameter, surface gravity, day
+ * length, orbital period, moon count, mean temperature. A static
+ * snapshot (no network calls), same pattern as every other `*Facts.ts`
+ * file in this codebase. Position math lives in orbital.ts, not here.
+ */
 import type { PlanetName } from "./orbital.js";
 
 export interface PlanetFacts {
@@ -86,3 +92,29 @@ export const PLANET_FACTS: Record<PlanetName, PlanetFacts> = {
     meanTempC: -214,
   },
 };
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — planetFacts.ts
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * Real curated facts for the 8 planets, keyed by orbital.ts's PlanetName:
+ * a short description, diameterKm, surface gravity, day length (Earth
+ * hours), orbital period (Earth days), moon count, and mean surface
+ * temperature. No position math here — that's orbital.ts's job; this
+ * file is purely the "what is it like there" data ContentView.tsx's
+ * PlanetSurface renders, and the gravity/diameterKm fields also feed
+ * relativity.ts's real gravitational time dilation via worldTree.ts's
+ * getDilationInputs.
+ *
+ * PATTERN THIS FILE FOLLOWS
+ * Same shape as every other `*Facts.ts` file in this codebase: an id
+ * union type (here, orbital.ts's PlanetName, since planets are already
+ * typed there), an interface describing one entry's facts, and a
+ * `Record<Id, Facts>` of curated values. A static snapshot, not a live
+ * feed — no network calls anywhere in this codebase.
+ * ============================================================================
+ */

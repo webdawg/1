@@ -1,3 +1,13 @@
+/**
+ * The Half-Life-style drop-down console: `~` opens it (App.tsx handles
+ * the key), Escape/`close`/`exit` closes it, both animated as a slide
+ * via `openStep`. Occupies the same top-tile slot as SolarView/
+ * ContentView/WarpTransition, but is the deliberate exception to their
+ * "no border of its own" rule — it keeps its own distinct double border
+ * as a floating overlay, since it represents a different mode rather
+ * than tile content. Owns the `become llm`/`become human` commands, the
+ * former gated on a 5-round token-prediction puzzle.
+ */
 import React, { useEffect, useRef, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
@@ -43,10 +53,12 @@ const OPEN_STEPS = 5;
 
 type Stage = "idle" | "puzzle-round" | "puzzle-result";
 
+/** Lowercases, trims, and strips trailing punctuation so puzzle answers match loosely (e.g. "Question." matches "question"). */
 function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/[.!?]+$/, "");
 }
 
+/** Draws ROUNDS distinct prompts at random from PUZZLE_POOL, without replacement. */
 function pickRounds(): { prompt: string; answers: string[] }[] {
   const pool = [...PUZZLE_POOL];
   const picked: { prompt: string; answers: string[] }[] = [];
@@ -57,6 +69,12 @@ function pickRounds(): { prompt: string; answers: string[] }[] {
   return picked;
 }
 
+/**
+ * The console overlay itself: owns the open/close slide animation
+ * (`openStep`, driven by two effects — one counting up while open,
+ * one counting down while closing, calling `onClosed` once fully shut),
+ * the scrollback buffer, and the puzzle/command state machine.
+ */
 export default function Console({ gridWidth, gridHeight, playerType, onBecomeLLM, onBecomeHuman, onClosed }: Props): React.JSX.Element {
   const [openStep, setOpenStep] = useState(0);
   const [closing, setClosing] = useState(false);
@@ -88,6 +106,7 @@ export default function Console({ gridWidth, gridHeight, playerType, onBecomeLLM
     setLines((prev) => [...prev, line]);
   }
 
+  /** Resets round/score state and prints the first prompt — entry point for the `become llm` conversion sequence. */
   function startPuzzle() {
     roundsRef.current = pickRounds();
     roundIndexRef.current = 0;
@@ -98,6 +117,7 @@ export default function Console({ gridWidth, gridHeight, playerType, onBecomeLLM
     print(`Round 1/${ROUNDS}: ${roundsRef.current[0].prompt}`);
   }
 
+  /** Scores one round's answer, prints the outcome, and either advances to the next round or resolves the whole sequence (pass calls onBecomeLLM; fail just returns to idle). */
   function submitPuzzleAnswer(answer: string) {
     const round = roundsRef.current[roundIndexRef.current];
     const ok = round.answers.some((a) => normalize(a) === normalize(answer));
@@ -124,6 +144,7 @@ export default function Console({ gridWidth, gridHeight, playerType, onBecomeLLM
     }
   }
 
+  /** The console's command dispatch — routes to puzzle-answer handling while a puzzle is active, otherwise parses a normal command line (help/become llm/become human/close/exit/unknown). */
   function runCommand(raw: string) {
     const val = raw.trim();
     setValue("");
@@ -183,3 +204,46 @@ export default function Console({ gridWidth, gridHeight, playerType, onBecomeLLM
     </Box>
   );
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — Console.tsx
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * The `~`-triggered drop-down console: a floating overlay with its own
+ * double border (App.tsx renders it instead of the normal tile content
+ * when open, not alongside it), a scrollback log, and a command prompt.
+ * Its main job is gating the `become llm` identity switch behind a
+ * 5-round token-prediction puzzle (PUZZLE_POOL) — `become human` is
+ * instant and ungated, since reverting to the default needs no proof.
+ *
+ * THE PUZZLE
+ * pickRounds draws ROUNDS (5) distinct prompts at random from
+ * PUZZLE_POOL — iconic, near-100%-predictable completions ("To be or
+ * not to be, that is the ___"), the exact kind of thing a language
+ * model is good at completing. submitPuzzleAnswer scores each answer
+ * via normalize (loose match: trim, lowercase, strip trailing
+ * punctuation) against every listed alternative, and resolving the
+ * sequence — PASS_THRESHOLD (3) or more correct — calls onBecomeLLM;
+ * otherwise it just returns to idle with playerType unchanged.
+ *
+ * OPEN/CLOSE ANIMATION
+ * openStep counts 0..OPEN_STEPS while opening (one effect, ticking every
+ * OPEN_FRAME_MS) and back down to 0 while `closing` is set (a second
+ * effect), calling `onClosed` only once it reaches 0 — the parent
+ * unmounts this component on that callback, not on the Escape keypress
+ * itself, so the slide-out animation is visible rather than an instant cut.
+ * `height` is derived from openStep/OPEN_STEPS as a fraction of the full
+ * tile height, and `visibleLines` trims the scrollback to whatever
+ * currently fits.
+ *
+ * COMMANDS
+ * runCommand branches on whether a puzzle round is currently active; if
+ * not, it recognizes help/become llm (aliases: llm, convert)/become
+ * human (aliases: human, revert)/close/exit, printing an echo of the
+ * typed line and the command's result to the scrollback either way.
+ * ============================================================================
+ */

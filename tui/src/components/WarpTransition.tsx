@@ -1,3 +1,12 @@
+/**
+ * The "diving through a star" (and, for Sagittarius A*, "stepping
+ * through a portal") animated transition played when travel crosses a
+ * star-map/star boundary (worldTree.ts's isStarBoundary). Self-contained
+ * frame loop, no new position math beyond reusing layout.ts's
+ * polarToGrid. Occupies the same top-tile content slot as
+ * SolarView/ContentView, so it likewise renders bare content with no
+ * border of its own.
+ */
 import React, { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import { polarToGrid } from "../layout.js";
@@ -345,6 +354,14 @@ function TransitionRow({ row }: { row: Cell[] }): React.JSX.Element {
   );
 }
 
+/**
+ * Drives the whole sequence: a fixed-length cinematic setup (star-ring
+ * or portal-door, per `portal`) advanced one frame every FRAME_MS, then
+ * a "traveling" phase of flickering words lasting `travelMs` (real
+ * distance-driven, see layout.ts's computeTravelDurationMs), then
+ * `onComplete`. Reports each phase change via `onPhaseChange` as it
+ * happens, for callers that need to react (e.g. suppressing input).
+ */
 export default function WarpTransition({
   gridWidth,
   gridHeight,
@@ -401,3 +418,52 @@ export default function WarpTransition({
     </Box>
   );
 }
+
+/*
+ * ============================================================================
+ * COLD EXPLAINER — WarpTransition.tsx
+ * ============================================================================
+ * Written for a reader who has opened only this file, per CODEBOT.md's
+ * cold-open convention. Keep this current when the file's behavior changes.
+ *
+ * WHAT THIS FILE IS
+ * The animated transition played whenever travel crosses the star-map/
+ * star boundary — normally a star-dive (approach the star, watch it
+ * rotate, watch its center open into a dark spot, get pulled in, then a
+ * flickering-word "traveling" phase scaled to real distance), but for
+ * Sagittarius A* specifically a different sequence: walking up to and
+ * through a plain door, "just a clear door to another world" per direct
+ * request, since diving through a black hole reads wrong. Every other
+ * move in the app is instant; this is the one deliberate exception.
+ *
+ * TWO SETUP SEQUENCES, ONE SHAPE
+ * SETUP_PHASES (star) and PORTAL_SETUP_PHASES (portal) are both exactly
+ * 12 steps so both modes take the same real setup time regardless of
+ * which plays; buildStarSetupFrame/buildPortalSetupFrame render each
+ * step into a Cell[][] grid the same way SolarView does. `portal` (a
+ * prop) picks which sequence and frame-builder runs; everything else
+ * (the FRAME_MS-paced step advance, the traveling phase after) is shared.
+ *
+ * THE TRAVELER
+ * TRAVELER_FIGURES picks the 3x3 ASCII figure by playerType — HUMAN a
+ * cyan stick figure, LLM a deliberately non-humanoid green circuit
+ * shape. stampTraveler places it polar-relative to the star (always
+ * straight up, so it never needs to rotate); stampTravelerAt places it
+ * by literal foot position for the portal sequence, where there's no
+ * "radius" to speak of.
+ *
+ * THE TRAVELING PHASE
+ * Once setup finishes, buildTravelingFrame scatters QUANTUM_WORDS
+ * (alien noise, single words, cryptic phrases) at random positions,
+ * re-picked every WORD_REFRESH_MS, for the full `travelMs` duration
+ * passed in by the caller — then fires `onComplete`.
+ *
+ * WHAT THIS FILE DELIBERATELY DOES NOT DO
+ * No new position math — polarToGrid (layout.ts) is reused as-is, with
+ * a local ASPECT_RATIO mirroring layout.ts's own private constant since
+ * terminal cells aren't square. No knowledge of *why* a boundary was
+ * crossed or what's on the other side — worldTree.ts's isStarBoundary
+ * decides when to mount this component at all; this file just plays the
+ * sequence and reports back via onPhaseChange/onComplete.
+ * ============================================================================
+ */
