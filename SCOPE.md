@@ -269,3 +269,26 @@ save it in documentation.)
 **Verbatim:**
 
 their are infinite connections between stars, lets call this entire project starsystem, and when you perform tensor like calculations using the particial accelerator sun you get strange results - this is a hardcoded quote save in documentation, and lets update the entire spec to reflect this.
+
+### 2026-08-20 — Algorithmic physics and hardened compute systems
+
+**Edited for readability:**
+
+We need to start talking about algorithmic physics. Sure, simple things
+can combine to create a set of physics — but it is possible that there
+is decision-making in the actual physics of the universe. To discount
+this would only subdue physics to the lower levels of math. It does not
+mean that physical laws like relativity are wrong, etc.; it means that
+as things get more complex, there may be a "final" variable of
+decision — if/then logic. It is possible that there are manifestations
+of matter that are "smart," etc. Ants can form colonies; galaxies can
+form objects to stop them from collapsing as they change; black holes
+can be smart, bla bla bla. It comes from the division of what matter
+is, and then everything that supports it. We are not talking about
+metaphysics — just larger, bigger-than-solar-system relativistic
+systems of work. We also want to add how systems of compute that run
+government, and the universe, are hardened and stable.
+
+**Verbatim:**
+
+we need to start talking about algrothimic physcics - sure simple things can combine to create a set of physics, but it is possible that there is decision making in the actual physics of the universe - to discount this would only subdue physics to the lower levels of math - it does not mean that physical laws like reletivity are wrong etc, it means that as things get more complex that there may be a 'final' variable of decision if then logics - it is possible that there are manifestations of matter that are 'smart' etc.  Ants can form colnoies - galaxys can form object to stop them from collapsing as they change, blackholes can be smart bla bla bla  - it comes from the division of what matter is, and then everything that supports it - we are not talking about metaphysics just larger bigger then solar system relativistic systems of work - we also want to add how systems of compute that run government, the unviverse, are hardended and stable

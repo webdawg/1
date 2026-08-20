@@ -162,6 +162,19 @@ architecture doesn't foreclose them, but not actionable yet.
       "none required at this time" in the original vision, lowest priority
 - [ ] Second video-raster "game box" overlay on top of text mode
 - [ ] Feed engine state to an external 3D game engine as a renderer
+- [ ] **Algorithmic physics** — explore whether the engine's physics
+      layer (`relativity.ts` and whatever follows it) should leave room
+      for decision-like ("if/then") behavior emerging at sufficiently
+      complex scales, not just compounding simple formulas — framed as
+      a *relativistic-scale* question (galaxy-and-up systems: how
+      galaxies stabilize as they change, black hole behavior, ...), not
+      metaphysics. Pairs with a second, more concrete thread: how the
+      systems of compute that run something like government, or the
+      universe itself, stay hardened and stable — worth scoping as
+      its own model of resilient large-scale computation once this
+      idea has more shape. See `SCOPE.md`'s 2026-08-20 addendum for
+      the full framing. Undefined beyond the idea itself — no engine
+      changes yet.
 - [ ] **The navigation model as a general visual protocol** — the
       recursive "center + orbiting things" pattern (`worldTree.ts`'s
       `getOrbitChildren`) isn't inherently astronomy-specific; it could
