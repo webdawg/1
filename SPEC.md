@@ -105,6 +105,20 @@ uses the normal math untouched. Confirmed via tmux at both 100×45 and
 column, with its full label visible even at the small floor where every
 other far-out star still crowds.
 
+## Physics rules
+
+Foundational laws the engine itself is built to uphold, distinct from the
+real-world physics simulated elsewhere (gravitational time dilation,
+orbital mechanics, etc. — see Time, Gravity, Velocity below). These are
+rules of *this* universe's engine, not physical constants borrowed from
+ours.
+
+1. **Data cannot be destroyed.** Nothing a player saves — notes, session
+   state, anything persisted via `session.ts` — is ever deleted by the
+   engine. This is a law, not a feature to be weighed against others when
+   implementing future mechanics (deletion/reset/overwrite commands, bot
+   interactions, etc.).
+
 ## Layout
 
 Two full-width **tiles** — that's the official term, used consistently
